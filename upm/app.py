@@ -9,6 +9,7 @@ from loguru import logger
 PAGINATION_LIMIT = 100
 
 API = 'https://www.uniqlo.com/jp/api/commerce/v5/ja/products'
+API_GU = 'https://www.gu-global.com/jp/api/commerce/v5/ja/products'
 
 con = sqlite3.connect('upm.db')
 cur = con.cursor()
@@ -74,12 +75,12 @@ def write_data(items):
         compare_prices(item)
 
 
-def fetch_data():
-    logger.info('Fetching data')
+def fetch_data(api):
+    logger.info(f'Fetching data from {api}')
 
     offset = 0
     while True:
-        res = httpx.get(API, params={'limit': PAGINATION_LIMIT, 'offset': offset})
+        res = httpx.get(api, params={'limit': PAGINATION_LIMIT, 'offset': offset})
 
         assert res.status_code == 200, f'API returned {res.status_code}'
 
@@ -101,11 +102,10 @@ def fetch_data():
         if offset > total:
             break
 
-    logger.info('Done')
-
 
 def main():
-    schedule.every(8).hours.do(fetch_data)
+    schedule.every(8).hours.do(fetch_data, API)
+    schedule.every(8).hours.do(fetch_data, API_GU)
 
     while True:
         schedule.run_pending()

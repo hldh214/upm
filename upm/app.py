@@ -1,6 +1,8 @@
 import sqlite3
+import time
 
 import httpx
+import schedule
 
 from loguru import logger
 
@@ -46,11 +48,11 @@ def compare_prices(item):
         return
 
     if old_price > new_price:
-        logger.info(
+        logger.success(
             f'↓↓↓[{product_id}/{price_group}][{gender}]{name} price decreased from {old_price} to {new_price}'
         )
     else:
-        logger.info(
+        logger.success(
             f'↑↑↑[{product_id}/{price_group}][{gender}]{name} price increased from {old_price} to {new_price}'
         )
 
@@ -73,6 +75,8 @@ def write_data(items):
 
 
 def fetch_data():
+    logger.info('Fetching data')
+
     offset = 0
     while True:
         res = httpx.get(API, params={'limit': PAGINATION_LIMIT, 'offset': offset})
@@ -97,6 +101,12 @@ def fetch_data():
         if offset > total:
             break
 
+    logger.info('Done')
+
 
 def main():
-    fetch_data()
+    schedule.every(8).hours.do(fetch_data)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)

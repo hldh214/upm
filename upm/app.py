@@ -6,6 +6,8 @@ import schedule
 
 from loguru import logger
 
+logger.add('upm.log')
+
 PAGINATION_LIMIT = 100
 
 API = 'https://www.uniqlo.com/jp/api/commerce/v5/ja/products'

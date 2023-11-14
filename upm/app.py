@@ -41,6 +41,64 @@ cur.execute('''
     );
 ''')
 
+html_template = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>UPM Report {date}</title>
+</head>
+<body>
+    <h1>UPM Report {date}</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Brand</th>
+                <th>Image</th>
+                <th>Product</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            {content}
+        </tbody>
+</body>
+</html>
+'''
+html_folder = '/var/www/upm.php.yokohama'
+
+
+def write_report(messages):
+    content = ''
+    date = time.strftime('%Y-%m-%d_%H-%M-%S')
+
+    for message in messages:
+        api_type = message['api_type']
+        status = message['status']
+        old_price = message['old_price']
+        new_price = message['new_price']
+
+        item = message['item']
+        product_id = item['productId']
+        price_group = item['priceGroup']
+        name = item['name']
+        image = item['images']['sub'][0]['image']
+        url = PRODUCTS[api_type].format(product_id=product_id, price_group=price_group)
+
+        price_color = 'red' if status == 'rise' else 'green'
+
+        content += f'''
+            <tr>
+                <td>{api_type}</td>
+                <td><img src="{image}" width="100" height="100"></td>
+                <td><a href="{url}" target="_blank">{name}</a></td>
+                <td style="color: {price_color}">{old_price} -> {new_price}</td>
+            </tr>
+        '''
+
+    html = html_template.format(date=date, content=content)
+    open(f'{html_folder}/{date}.html', 'w').write(html)
+
 
 def compare_prices(item, api_type):
     product_id = item['productId']
@@ -66,15 +124,23 @@ def compare_prices(item, api_type):
     if old_price == new_price:
         return
 
-    log_message = f'[{api_type}][{old_price} -> {new_price}][{product_id}/{price_group}][{gender}]{name}'
-    if old_price > new_price:
-        logger.log('fall', log_message)
-    else:
-        logger.log('rise', log_message)
+    logger.log(
+        'rise' if old_price < new_price else 'fall',
+        f'[{api_type}][{old_price} -> {new_price}][{product_id}/{price_group}][{gender}]{name}'
+    )
+
+    return {
+        'status': 'rise' if old_price < new_price else 'fall',
+        'old_price': old_price,
+        'old_datetime': old_datetime,
+        'new_price': new_price,
+        'new_datetime': new_datetime,
+    }
 
 
 def write_data(items, api_type):
     local_cur = con.cursor()
+    messages = []
     for item in items:
         product_id = item['productId']
         price_group = item['priceGroup']
@@ -87,7 +153,15 @@ def write_data(items, api_type):
 
         con.commit()
 
-        compare_prices(item, api_type)
+        message = compare_prices(item, api_type)
+        if message:
+            message.update({
+                'item': item,
+                'api_type': api_type,
+            })
+            messages.append(message)
+
+    return messages
 
 
 @tenacity.retry(
@@ -103,6 +177,7 @@ def fetch_data(api_type):
     logger.info(f'Fetching data from {api_type}')
 
     offset = 0
+    messages = []
     while True:
         res = http_request('GET', API.get(api_type), params={'limit': PAGINATION_LIMIT, 'offset': offset})
 
@@ -116,7 +191,9 @@ def fetch_data(api_type):
 
         assert res['status'] == 'ok', f'API returned {res}'
 
-        write_data(res['result']['items'], api_type)
+        message = write_data(res['result']['items'], api_type)
+        if message:
+            messages.extend(message)
 
         pagination = res['result']['pagination']
         total = pagination['total']
@@ -125,6 +202,8 @@ def fetch_data(api_type):
 
         if offset > total:
             break
+
+    write_report(messages)
 
 
 def main():

@@ -4,6 +4,7 @@ import time
 
 import httpx
 import schedule
+import tenacity
 
 from loguru import logger
 
@@ -89,12 +90,21 @@ def write_data(items, api_type):
         compare_prices(item, api_type)
 
 
+@tenacity.retry(
+    wait=tenacity.wait_random_exponential(multiplier=1, min=4, max=60),
+    stop=tenacity.stop_after_attempt(4),
+    before_sleep=tenacity.before_sleep_log(logger, 30),  # 30 for "Warning"
+)
+def http_request(method, url, **kwargs):
+    return httpx.request(method, url, **kwargs)
+
+
 def fetch_data(api_type):
     logger.info(f'Fetching data from {api_type}')
 
     offset = 0
     while True:
-        res = httpx.get(API.get(api_type), params={'limit': PAGINATION_LIMIT, 'offset': offset})
+        res = http_request('GET', API.get(api_type), params={'limit': PAGINATION_LIMIT, 'offset': offset})
 
         assert res.status_code == 200, f'API returned {res.status_code}'
 

@@ -51,7 +51,7 @@ def compare_prices(item, api_type):
     cur.execute('''
         SELECT price, datetime FROM price_history
         WHERE productId = ? AND priceGroup = ?
-        ORDER BY datetime
+        ORDER BY datetime DESC
         LIMIT 2
     ''', (product_id, price_group))
 
@@ -60,8 +60,8 @@ def compare_prices(item, api_type):
     if len(rows) < 2:
         return
 
-    old_price, old_datetime = rows[0]
-    new_price, new_datetime = rows[1]
+    old_price, old_datetime = rows[1]
+    new_price, new_datetime = rows[0]
 
     if old_price == new_price:
         return

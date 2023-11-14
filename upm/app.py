@@ -1,4 +1,5 @@
 import sqlite3
+import sys
 import time
 
 import httpx
@@ -6,12 +7,26 @@ import schedule
 
 from loguru import logger
 
-logger.add('upm.log')
+log_format = ('<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}{level.icon}</level>'
+              ' | <cyan>{name}</cyan>:<cyan>{function}</cyan> | <level>{message}</level>')
+
+logger.remove()
+logger.level('rise', no=38, color='<red><bold>', icon='📈')
+logger.level('fall', no=39, color='<green><bold>', icon='📉')
+logger.add('upm.log', format=log_format)
+logger.add(sys.stdout, format=log_format)
 
 PAGINATION_LIMIT = 100
 
-API = 'https://www.uniqlo.com/jp/api/commerce/v5/ja/products'
-API_GU = 'https://www.gu-global.com/jp/api/commerce/v5/ja/products'
+API = {
+    'UNIQLO': 'https://www.uniqlo.com/jp/api/commerce/v5/ja/products',
+    'GU': 'https://www.gu-global.com/jp/api/commerce/v5/ja/products',
+}
+
+PRODUCTS = {
+    'UNIQLO': 'https://www.uniqlo.com/jp/ja/products/{product_id}/{price_group}',
+    'GU': 'https://www.gu-global.com/jp/ja/products/{product_id}/{price_group}',
+}
 
 con = sqlite3.connect('upm.db')
 cur = con.cursor()
@@ -26,7 +41,7 @@ cur.execute('''
 ''')
 
 
-def compare_prices(item):
+def compare_prices(item, api_type):
     product_id = item['productId']
     price_group = item['priceGroup']
     name = item['name']
@@ -50,17 +65,14 @@ def compare_prices(item):
     if old_price == new_price:
         return
 
+    log_message = f'[{api_type}][{old_price} -> {new_price}][{product_id}/{price_group}][{gender}]{name}'
     if old_price > new_price:
-        logger.success(
-            f'↓↓↓[{product_id}/{price_group}][{gender}]{name} price decreased from {old_price} to {new_price}'
-        )
+        logger.log('fall', log_message)
     else:
-        logger.success(
-            f'↑↑↑[{product_id}/{price_group}][{gender}]{name} price increased from {old_price} to {new_price}'
-        )
+        logger.log('rise', log_message)
 
 
-def write_data(items):
+def write_data(items, api_type):
     local_cur = con.cursor()
     for item in items:
         product_id = item['productId']
@@ -74,15 +86,15 @@ def write_data(items):
 
         con.commit()
 
-        compare_prices(item)
+        compare_prices(item, api_type)
 
 
-def fetch_data(api):
-    logger.info(f'Fetching data from {api}')
+def fetch_data(api_type):
+    logger.info(f'Fetching data from {api_type}')
 
     offset = 0
     while True:
-        res = httpx.get(api, params={'limit': PAGINATION_LIMIT, 'offset': offset})
+        res = httpx.get(API.get(api_type), params={'limit': PAGINATION_LIMIT, 'offset': offset})
 
         assert res.status_code == 200, f'API returned {res.status_code}'
 
@@ -94,7 +106,7 @@ def fetch_data(api):
 
         assert res['status'] == 'ok', f'API returned {res}'
 
-        write_data(res['result']['items'])
+        write_data(res['result']['items'], api_type)
 
         pagination = res['result']['pagination']
         total = pagination['total']
@@ -106,8 +118,8 @@ def fetch_data(api):
 
 
 def main():
-    schedule.every(8).hours.do(fetch_data, API)
-    schedule.every(8).hours.do(fetch_data, API_GU)
+    schedule.every(8).hours.do(fetch_data, 'UNIQLO')
+    schedule.every(8).hours.do(fetch_data, 'GU')
 
     while True:
         schedule.run_pending()

@@ -46,14 +46,13 @@ html_template = '''
 <html>
 <head>
     <meta charset="utf-8">
-    <title>UPM Report {date}</title>
+    <title>UPM Report {api_type} {date}</title>
 </head>
 <body>
-    <h1>UPM Report {date}</h1>
+    <h1>UPM Report {api_type} {date}</h1>
     <table>
         <thead>
             <tr>
-                <th>Brand</th>
                 <th>Image</th>
                 <th>Product</th>
                 <th>Price</th>
@@ -68,12 +67,11 @@ html_template = '''
 html_folder = '/var/www/upm.php.yokohama'
 
 
-def write_report(messages):
+def write_report(messages, api_type):
     content = ''
     date = time.strftime('%Y-%m-%d_%H-%M-%S')
 
     for message in messages:
-        api_type = message['api_type']
         status = message['status']
         old_price = message['old_price']
         new_price = message['new_price']
@@ -89,15 +87,14 @@ def write_report(messages):
 
         content += f'''
             <tr>
-                <td>{api_type}</td>
                 <td><img src="{image}" width="100" height="100"></td>
                 <td><a href="{url}" target="_blank">{name}</a></td>
                 <td style="color: {price_color}">{old_price} -> {new_price}</td>
             </tr>
         '''
 
-    html = html_template.format(date=date, content=content)
-    open(f'{html_folder}/{date}.html', 'w').write(html)
+    html = html_template.format(date=date, content=content, api_type=api_type)
+    open(f'{html_folder}/{api_type}_{date}.html', 'w').write(html)
 
 
 def compare_prices(item, api_type):
@@ -157,7 +154,6 @@ def write_data(items, api_type):
         if message:
             message.update({
                 'item': item,
-                'api_type': api_type,
             })
             messages.append(message)
 
@@ -203,7 +199,8 @@ def fetch_data(api_type):
         if offset > total:
             break
 
-    write_report(messages)
+    if messages:
+        write_report(messages, api_type)
 
 
 def main():

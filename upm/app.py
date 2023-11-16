@@ -145,7 +145,7 @@ def write_data(items, api_type):
 
         local_cur.execute('''
             INSERT INTO price_history (productId, priceGroup, price, datetime)
-            VALUES (?, ?, ?, datetime('now'))
+            VALUES (?, ?, ?, datetime('now', 'localtime'))
         ''', (product_id, price_group, price))
 
         con.commit()

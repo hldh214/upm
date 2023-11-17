@@ -82,7 +82,12 @@ def write_report(messages, api_type):
         product_id = item['productId']
         price_group = item['priceGroup']
         name = item['name']
-        image = item['images']['sub'][0]['image']
+
+        try:
+            image = item['images']['sub'][0]['image']
+        except (KeyError, IndexError):
+            image = ''
+
         url = PRODUCTS[api_type].format(product_id=product_id, price_group=price_group)
 
         price_color = 'red' if status == 'rise' else 'green'
@@ -208,6 +213,8 @@ def fetch_data(api_type):
 def main():
     schedule.every(8).hours.do(fetch_data, 'UNIQLO')
     schedule.every(8).hours.do(fetch_data, 'GU')
+
+    schedule.run_all()  # Run once at start
 
     while True:
         schedule.run_pending()

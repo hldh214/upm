@@ -47,17 +47,20 @@ html_template = '''
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css" />
     <title>UPM Report {api_type} {date}</title>
 </head>
 <body>
     <h1>UPM Report {api_type} {date}</h1>
-    <table>
+    <table id="myTable">
         <thead>
             <tr>
                 <th>Gender</th>
+                <th>Code</th>
                 <th>Image</th>
-                <th>Product</th>
-                <th>Price</th>
+                <th>Name</th>
+                <th>OldPrice</th>
+                <th>NewPrice</th>
             </tr>
         </thead>
         <tbody>
@@ -65,6 +68,11 @@ html_template = '''
         </tbody>
     </table>
 </body>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7/dist/jquery.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
+<script>
+    $(document).ready(() => $('#myTable').DataTable());
+</script>
 </html>
 '''
 html_folder = '/var/www/upm.php.yokohama'
@@ -73,12 +81,6 @@ html_folder = '/var/www/upm.php.yokohama'
 def write_report(messages, api_type):
     content = ''
     date = time.strftime('%Y-%m-%d_%H-%M-%S')
-
-    # order by "genderCategory"
-    messages = sorted(messages, key=lambda x: x['item']['genderCategory'])
-
-    # order by "status"
-    messages = sorted(messages, key=lambda x: x['status'])
 
     for message in messages:
         status = message['status']
@@ -92,6 +94,7 @@ def write_report(messages, api_type):
         gender = item['genderCategory']
         image = list(item['images']['main'].values())[0]['image']
 
+        code = f'{product_id}/{price_group}'
         url = PRODUCTS[api_type].format(product_id=product_id, price_group=price_group)
 
         price_color = 'red' if status == 'rise' else 'green'
@@ -99,9 +102,11 @@ def write_report(messages, api_type):
         content += f'''
             <tr>
                 <td>{gender}</td>
-                <td><img alt="sub0" src="{image}" width="100" height="100"></td>
+                <td>{code}</td>
+                <td><img alt="main_image" src="{image}" width="100" height="100"></td>
                 <td><a href="{url}" target="_blank">{name}</a></td>
-                <td style="color: {price_color}">{old_price} -> {new_price}</td>
+                <td>{old_price}</td>
+                <td style="color: {price_color}">{new_price}</td>
             </tr>
         '''
 

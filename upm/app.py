@@ -54,6 +54,7 @@ html_template = '''
     <table>
         <thead>
             <tr>
+                <th>Gender</th>
                 <th>Image</th>
                 <th>Product</th>
                 <th>Price</th>
@@ -73,6 +74,12 @@ def write_report(messages, api_type):
     content = ''
     date = time.strftime('%Y-%m-%d_%H-%M-%S')
 
+    # order by "genderCategory"
+    messages = sorted(messages, key=lambda x: x['item']['genderCategory'])
+
+    # order by "status"
+    messages = sorted(messages, key=lambda x: x['status'])
+
     for message in messages:
         status = message['status']
         old_price = message['old_price']
@@ -82,6 +89,7 @@ def write_report(messages, api_type):
         product_id = item['productId']
         price_group = item['priceGroup']
         name = item['name']
+        gender = item['genderCategory']
         image = list(item['images']['main'].values())[0]['image']
 
         url = PRODUCTS[api_type].format(product_id=product_id, price_group=price_group)
@@ -90,6 +98,7 @@ def write_report(messages, api_type):
 
         content += f'''
             <tr>
+                <td>{gender}</td>
                 <td><img alt="sub0" src="{image}" width="100" height="100"></td>
                 <td><a href="{url}" target="_blank">{name}</a></td>
                 <td style="color: {price_color}">{old_price} -> {new_price}</td>

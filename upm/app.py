@@ -135,7 +135,8 @@ def compare_prices(item, api_type):
     old_price, old_datetime = rows[1]
     new_price, new_datetime = rows[0]
 
-    if old_price == new_price:
+    # ignore the same and rising price
+    if new_price >= old_price:
         return
 
     logger.log(

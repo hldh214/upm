@@ -43,9 +43,10 @@ cur.execute('''
 
 html_template = '''
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UPM Report {api_type} {date}</title>
 </head>
 <body>
@@ -61,6 +62,7 @@ html_template = '''
         <tbody>
             {content}
         </tbody>
+    </table>
 </body>
 </html>
 '''
@@ -87,7 +89,7 @@ def write_report(messages, api_type):
 
         content += f'''
             <tr>
-                <td><img src="{image}" width="100" height="100"></td>
+                <td><img alt="sub0" src="{image}" width="100" height="100"></td>
                 <td><a href="{url}" target="_blank">{name}</a></td>
                 <td style="color: {price_color}">{old_price} -> {new_price}</td>
             </tr>

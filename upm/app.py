@@ -82,11 +82,7 @@ def write_report(messages, api_type):
         product_id = item['productId']
         price_group = item['priceGroup']
         name = item['name']
-
-        try:
-            image = item['images']['sub'][0]['image']
-        except (KeyError, IndexError):
-            image = ''
+        image = list(item['images']['main'].values())[0]['image']
 
         url = PRODUCTS[api_type].format(product_id=product_id, price_group=price_group)
 

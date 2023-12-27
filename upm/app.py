@@ -61,6 +61,7 @@ html_template = '''
                 <th>Name</th>
                 <th>OldPrice</th>
                 <th>NewPrice</th>
+                <th>LowestPrice</th>
             </tr>
         </thead>
         <tbody>
@@ -86,6 +87,7 @@ def write_report(messages, api_type):
         status = message['status']
         old_price = message['old_price']
         new_price = message['new_price']
+        lowest_price = message['lowest_price']
 
         item = message['item']
         product_id = item['productId']
@@ -107,6 +109,7 @@ def write_report(messages, api_type):
                 <td><a href="{url}" target="_blank">{name}</a></td>
                 <td>{old_price}</td>
                 <td style="color: {price_color}">{new_price}</td>
+                <td>{lowest_price}</td>
             </tr>
         '''
 
@@ -126,7 +129,6 @@ def compare_prices(item, api_type):
         ORDER BY datetime DESC
         LIMIT 2
     ''', (product_id, price_group))
-
     rows = cur.fetchall()
 
     if len(rows) < 2:
@@ -139,9 +141,18 @@ def compare_prices(item, api_type):
     if new_price >= old_price:
         return
 
+    # query history the lowest price
+    cur.execute('''
+        SELECT price FROM price_history
+        WHERE productId = ? AND priceGroup = ?
+        ORDER BY price
+        LIMIT 1
+    ''', (product_id, price_group))
+    lowest_price = cur.fetchone()[0]
+
     logger.log(
         'rise' if old_price < new_price else 'fall',
-        f'[{api_type}][{old_price} -> {new_price}][{product_id}/{price_group}][{gender}]{name}'
+        f'[{api_type}][{old_price} -> {new_price}({lowest_price})][{product_id}/{price_group}][{gender}]{name}'
     )
 
     return {
@@ -150,6 +161,7 @@ def compare_prices(item, api_type):
         'old_datetime': old_datetime,
         'new_price': new_price,
         'new_datetime': new_datetime,
+        'lowest_price': lowest_price,
     }
 
 

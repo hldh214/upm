@@ -20,8 +20,8 @@ logger.add(sys.stdout, format=log_format)
 PAGINATION_LIMIT = 100
 
 API = {
-    'UNIQLO': 'https://www.uniqlo.com/jp/api/commerce/v5/ja/products',
-    'GU': 'https://www.gu-global.com/jp/api/commerce/v5/ja/products',
+    'UNIQLO': 'https://www.uniqlo.com/jp/api/commerce/v5/ja/products?storeId=126608',
+    'GU': 'https://www.gu-global.com/jp/api/commerce/v5/ja/products?storeId=126608',
 }
 
 PRODUCTS = {

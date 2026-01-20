@@ -52,64 +52,64 @@ html_template = '''
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <title>UPM Report {api_type} {date}</title>
     <style>
-        :root {{ --primary-color: #007bff; --bg-color: #f8f9fa; --card-shadow: 0 4px 12px rgba(0,0,0,0.08); }}
-        body {{ font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; padding: 20px; background-color: var(--bg-color); color: #333; }}
-        h1 {{ margin-bottom: 30px; color: #2c3e50; font-weight: 600; }}
+        :root { --primary-color: #007bff; --bg-color: #f8f9fa; --card-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; padding: 20px; background-color: var(--bg-color); color: #333; }
+        h1 { margin-bottom: 30px; color: #2c3e50; font-weight: 600; }
         
         /* Filter Styles */
-        .filter-container {{ margin-bottom: 25px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }}
-        .filter-label {{ font-weight: 500; margin-right: 10px; color: #555; }}
-        .btn-filter {{ border-radius: 20px; padding: 6px 16px; font-weight: 500; transition: all 0.2s; }}
+        .filter-container { margin-bottom: 25px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .filter-label { font-weight: 500; margin-right: 10px; color: #555; }
+        .btn-filter { border-radius: 20px; padding: 6px 16px; font-weight: 500; transition: all 0.2s; }
         
         /* Desktop Table Styles */
-        .table-container {{ background: white; border-radius: 12px; box-shadow: var(--card-shadow); padding: 5px; overflow: hidden; }}
-        table.dataTable {{ width: 100% !important; margin: 0 !important; border-collapse: separate; border-spacing: 0; }}
-        table.dataTable thead th {{ background-color: var(--primary-color); color: white; border: none; padding: 15px; font-weight: 600; }}
-        table.dataTable tbody td {{ padding: 12px 15px; vertical-align: middle; border-bottom: 1px solid #f0f0f0; }}
-        table.dataTable tbody tr:hover {{ background-color: #f8fbff; }}
-        .img-thumbnail {{ border-radius: 8px; border: 1px solid #eee; object-fit: contain; background: #fff; }}
+        .table-container { background: white; border-radius: 12px; box-shadow: var(--card-shadow); padding: 5px; overflow: hidden; }
+        table.dataTable { width: 100% !important; margin: 0 !important; border-collapse: separate; border-spacing: 0; }
+        table.dataTable thead th { background-color: var(--primary-color); color: white; border: none; padding: 15px; font-weight: 600; }
+        table.dataTable tbody td { padding: 12px 15px; vertical-align: middle; border-bottom: 1px solid #f0f0f0; }
+        table.dataTable tbody tr:hover { background-color: #f8fbff; }
+        .img-thumbnail { border-radius: 8px; border: 1px solid #eee; object-fit: contain; background: #fff; }
         
         /* Mobile / Responsive Styles */
-        @media (max-width: 768px) {{
-            body {{ padding: 10px; }}
-            h1 {{ font-size: 1.5rem; margin-bottom: 20px; }}
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            h1 { font-size: 1.5rem; margin-bottom: 20px; }
             
             /* Filter Mobile */
-            .filter-container {{ gap: 5px; }}
-            .filter-label {{ width: 100%; margin-bottom: 5px; }}
-            .btn-filter {{ flex: 1; text-align: center; padding: 5px 10px; font-size: 0.9rem; }}
+            .filter-container { gap: 5px; }
+            .filter-label { width: 100%; margin-bottom: 5px; }
+            .btn-filter { flex: 1; text-align: center; padding: 5px 10px; font-size: 0.9rem; }
 
             /* Scrollable Table View */
-            .table-container {{ 
+            .table-container { 
                 overflow-x: auto; 
                 -webkit-overflow-scrolling: touch; 
-            }}
+            }
             
             /* Adjust table for small screens */
-            table.dataTable {{ white-space: nowrap; }}
+            table.dataTable { white-space: nowrap; }
             
-            table.dataTable tbody td {{ padding: 8px 5px; font-size: 0.9rem; }}
-            table.dataTable thead th {{ padding: 10px 5px; font-size: 0.9rem; }}
+            table.dataTable tbody td { padding: 8px 5px; font-size: 0.9rem; }
+            table.dataTable thead th { padding: 10px 5px; font-size: 0.9rem; }
             
             /* New Product Column Style */
-            .col-product {{ white-space: normal; min-width: 150px; text-align: center; }}
-            .col-product img {{ width: 80px !important; height: 80px !important; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto; }}
-            .col-product a {{ display: block; font-size: 0.9rem; }}
-        }}
+            .col-product { white-space: normal; min-width: 150px; text-align: center; }
+            .col-product img { width: 80px !important; height: 80px !important; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto; }
+            .col-product a { display: block; font-size: 0.9rem; }
+        }
         
         /* Mobile-first hover: disable hover style by default (fix sticky hover) */
-        .btn-filter.btn-outline-primary:hover {{
+        .btn-filter.btn-outline-primary:hover {
             background-color: transparent;
             color: var(--bs-primary);
-        }}
+        }
 
         /* Enable hover style only for devices that support hover */
-        @media (hover: hover) {{
-            .btn-filter.btn-outline-primary:hover {{
+        @media (hover: hover) {
+            .btn-filter.btn-outline-primary:hover {
                 background-color: var(--bs-primary);
                 color: #fff;
-            }}
-        }}
+            }
+        }
     </style>
 </head>
 <body>
@@ -149,48 +149,48 @@ html_template = '''
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
 <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
 <script>
-    $(document).ready(function() {{
-        var table = $('#myTable').DataTable({{
+    $(document).ready(function() {
+        var table = $('#myTable').DataTable({
             "paging": false,
             "order": [[1, "asc"]], // Default sort by New Price
             "fixedHeader": true
-        }});
+        });
     
         var selectedGenders = new Set();
     
-        window.filterGender = function(btn, gender) {{
+        window.filterGender = function(btn, gender) {
             var $btn = $(btn);
             var $allBtn = $('#genderFilters button[data-gender=""]');
             
-            if (gender === '') {{
+            if (gender === '') {
                 // Clicked ALL
                 selectedGenders.clear();
                 $('#genderFilters button').removeClass('btn-primary active').addClass('btn-outline-primary');
                 $allBtn.addClass('btn-primary active').removeClass('btn-outline-primary');
                 table.column(4).search('').draw();
-            }} else {{
+            } else {
                 // Clicked specific gender
-                if (selectedGenders.has(gender)) {{
+                if (selectedGenders.has(gender)) {
                     selectedGenders.delete(gender);
                     $btn.removeClass('btn-primary active').addClass('btn-outline-primary');
-                }} else {{
+                } else {
                     selectedGenders.add(gender);
                     $btn.addClass('btn-primary active').removeClass('btn-outline-primary');
-                }}
+                }
                 
-                if (selectedGenders.size === 0) {{
+                if (selectedGenders.size === 0) {
                     $allBtn.addClass('btn-primary active').removeClass('btn-outline-primary');
                     table.column(4).search('').draw();
-                }} else {{
+                } else {
                     $allBtn.removeClass('btn-primary active').addClass('btn-outline-primary');
                     // Build regex: ^(GENDER1|GENDER2)$
                     var regex = '^(' + Array.from(selectedGenders).join('|') + ')$';
                     table.column(4).search(regex, true, false).draw();
-                }}
-            }}
+                }
+            }
             $btn.blur();
-        }};
-    }});
+        };
+    });
 </script>
 </html>
 '''
@@ -234,7 +234,7 @@ def write_report(messages, api_type):
             </tr>
         '''
 
-    html = html_template.format(date=date, content=content, api_type=api_type)
+    html = html_template.replace('{date}', date).replace('{content}', content).replace('{api_type}', api_type)
     open(f'{html_folder}/{api_type}_{date}.html', 'w').write(html)
 
 

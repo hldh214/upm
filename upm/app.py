@@ -259,14 +259,14 @@ def compare_prices(item, api_type):
     rows = cur.fetchall()
 
     if len(rows) < 2:
-        return
+        return None
 
     old_price, old_datetime = rows[1]
     new_price, new_datetime = rows[0]
 
     # ignore the same and prices that haven't dropped
     if new_price >= old_price:
-        return
+        return None
 
     # query the lowest historical price
     cur.execute('''
@@ -378,7 +378,7 @@ def main():
     schedule.every().day.at('04:00').do(fetch_data, 'UNIQLO')
     schedule.every().day.at('04:00').do(fetch_data, 'GU')
 
-    schedule.run_all()  # Run once at start
+    schedule.run_all()  # Run once at the start
 
     while True:
         schedule.run_pending()

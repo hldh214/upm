@@ -90,7 +90,7 @@
 
             <div class="card">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0">History Data (Price Changes Only)</h5>
+                    <h5 class="mb-0">History Data</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -98,7 +98,6 @@
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Price Group</th>
                                     <th>Price</th>
                                 </tr>
                             </thead>
@@ -322,12 +321,23 @@
             const tbody = document.querySelector('#dataTable tbody');
             tbody.innerHTML = '';
 
-            timeline.forEach(item => {
+            timeline.forEach((item, index) => {
                 const tr = document.createElement('tr');
+
+                let priceClass = '';
+                // Since timeline is reversed (newest first), the "previous" record in time is at index + 1
+                if (index < timeline.length - 1) {
+                    const prevPrice = timeline[index + 1].price;
+                    if (item.price > prevPrice) {
+                        priceClass = 'text-danger fw-bold';
+                    } else if (item.price < prevPrice) {
+                        priceClass = 'text-success fw-bold';
+                    }
+                }
+
                 tr.innerHTML = `
                     <td>${item.date}</td>
-                    <td>${item.priceGroup}</td>
-                    <td>${item.price}</td>
+                    <td class="${priceClass}">${item.price}</td>
                 `;
                 tbody.appendChild(tr);
             });

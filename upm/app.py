@@ -374,8 +374,9 @@ def fetch_data(api_type):
 
 
 def main():
-    schedule.every(8).hours.do(fetch_data, 'UNIQLO')
-    schedule.every(8).hours.do(fetch_data, 'GU')
+    # every day at 4:00 AM
+    schedule.every().day.at('04:00').do(fetch_data, 'UNIQLO')
+    schedule.every().day.at('04:00').do(fetch_data, 'GU')
 
     schedule.run_all()  # Run once at start
 

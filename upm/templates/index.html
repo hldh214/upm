@@ -47,6 +47,41 @@
                 <h3 id="detailTitle" class="m-0"></h3>
             </div>
 
+            <!-- Product Info & Stats -->
+            <div class="row mb-4 align-items-center">
+                <div class="col-md-3 text-center mb-3 mb-md-0">
+                    <img id="detailImage" class="img-fluid rounded shadow-sm" style="max-height: 200px; display:none;" alt="Product Image">
+                </div>
+                <div class="col-md-9">
+                    <div class="row g-3 text-center">
+                        <div class="col-4">
+                            <div class="card border-primary h-100">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title text-muted small mb-1">Current Price</h6>
+                                    <h4 class="card-text text-primary fw-bold" id="statCurrent">-</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="card border-success h-100">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title text-muted small mb-1">Lowest Price</h6>
+                                    <h4 class="card-text text-success fw-bold" id="statMin">-</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="card border-danger h-100">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title text-muted small mb-1">Highest Price</h6>
+                                    <h4 class="card-text text-danger fw-bold" id="statMax">-</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card mb-4">
                 <div class="card-body">
                     <canvas id="priceChart"></canvas>
@@ -55,7 +90,7 @@
 
             <div class="card">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0">History Data</h5>
+                    <h5 class="mb-0">History Data (Price Changes Only)</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -80,6 +115,29 @@
     <script>
         let myChart = null;
         let lastResults = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const path = window.location.pathname;
+            if (path.startsWith('/product/')) {
+                const pid = path.split('/product/')[1];
+                if (pid) {
+                    loadHistory(pid, false);
+                }
+            }
+
+            window.onpopstate = (event) => {
+                if (event.state && event.state.productId) {
+                    loadHistory(event.state.productId, false);
+                } else {
+                     if (window.location.pathname === '/') {
+                        document.getElementById('detailView').style.display = 'none';
+                        if (lastResults.length > 0) {
+                            document.getElementById('searchResults').style.display = 'flex';
+                        }
+                    }
+                }
+            };
+        });
 
         async function performSearch() {
             const q = document.getElementById('searchInput').value.trim();
@@ -107,14 +165,8 @@
                     return;
                 }
 
-                if (data.length === 1) {
-                    // Exact/Single match -> show directly
-                    loadProduct(data[0]);
-                } else {
-                    // Multiple matches -> show list
-                    renderResults(data);
-                    searchResults.style.display = 'flex'; // row needs flex/block? row is flex by default
-                }
+                renderResults(data);
+                searchResults.style.display = 'flex';
 
             } catch (err) {
                 console.error(err);
@@ -125,6 +177,7 @@
 
         function renderResults(products) {
             const grid = document.getElementById('resultsGrid');
+            grid.innerHTML = '';
             products.forEach(p => {
                 const col = document.createElement('div');
                 col.className = 'col-md-4 col-sm-6';
@@ -133,7 +186,7 @@
                 let title = p.name === p.productId ? `Product ${p.productId}` : p.name;
 
                 col.innerHTML = `
-                    <div class="card product-card h-100" onclick='loadProduct(${JSON.stringify(p)})'>
+                    <div class="card product-card h-100" onclick="loadHistory('${p.productId}')">
                         ${imgHtml}
                         <div class="card-body text-center">
                             <h5 class="card-title text-truncate" title="${title}">${title}</h5>
@@ -146,7 +199,7 @@
             });
         }
 
-        async function loadProduct(product) {
+        async function loadHistory(productId, pushState = true) {
             const detailView = document.getElementById('detailView');
             const searchResults = document.getElementById('searchResults');
             const detailTitle = document.getElementById('detailTitle');
@@ -155,22 +208,42 @@
             searchResults.style.display = 'none';
             errorArea.style.display = 'none';
 
-            let displayTitle = product.name === product.productId ? `Product ${product.productId}` : product.name;
-            detailTitle.textContent = `${displayTitle} (${product.productId})`;
+            if (pushState) {
+                history.pushState({productId: productId}, '', `/product/${productId}`);
+            }
 
             try {
-                const response = await fetch(`/api/history/${product.productId}`);
+                const response = await fetch(`/api/history/${productId}`);
                 const data = await response.json();
 
-                if (Object.keys(data).length === 0) {
+                if (!data.history || Object.keys(data.history).length === 0) {
                     errorArea.textContent = 'No history data for this product.';
                     errorArea.style.display = 'block';
                     return;
                 }
 
                 detailView.style.display = 'block';
-                renderChart(data);
-                renderTable(data);
+
+                const p = data.product;
+                let displayTitle = p.name === productId ? `Product ${productId}` : p.name;
+                detailTitle.textContent = `${displayTitle} (${productId})`;
+
+                const imgEl = document.getElementById('detailImage');
+                if (p.image) {
+                    imgEl.src = p.image;
+                    imgEl.style.display = 'block';
+                } else {
+                    imgEl.style.display = 'none';
+                }
+
+                if (data.stats) {
+                    document.getElementById('statCurrent').textContent = data.stats.current;
+                    document.getElementById('statMin').textContent = data.stats.min;
+                    document.getElementById('statMax').textContent = data.stats.max;
+                }
+
+                renderChart(data.history);
+                renderTable(data.timeline);
 
             } catch (err) {
                 console.error(err);
@@ -180,14 +253,15 @@
         }
 
         function showResults() {
-            if (lastResults.length > 1) {
-                document.getElementById('detailView').style.display = 'none';
+            if (window.location.pathname.startsWith('/product/')) {
+                 history.pushState({}, '', '/');
+            }
+
+            document.getElementById('detailView').style.display = 'none';
+            if (lastResults.length > 0) {
                 document.getElementById('searchResults').style.display = 'flex';
             } else {
-                // If only 1 result, back clears search? Or does nothing?
-                // Let's just hide detail and show search bar empty? No.
-                // If 1 result, we are effectively in "search mode".
-                document.getElementById('detailView').style.display = 'none';
+                document.getElementById('searchInput').focus();
             }
         }
 
@@ -244,29 +318,16 @@
             });
         }
 
-        function renderTable(data) {
+        function renderTable(timeline) {
             const tbody = document.querySelector('#dataTable tbody');
-            tbody.innerHTML = ''; // Clear previous
-            const rows = [];
+            tbody.innerHTML = '';
 
-            for (const group in data) {
-                data[group].forEach(item => {
-                    rows.push({
-                        date: item.date,
-                        group: group,
-                        price: item.price
-                    });
-                });
-            }
-
-            rows.sort((a, b) => b.date.localeCompare(a.date));
-
-            rows.forEach(row => {
+            timeline.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${row.date}</td>
-                    <td>${row.group}</td>
-                    <td>${row.price}</td>
+                    <td>${item.date}</td>
+                    <td>${item.priceGroup}</td>
+                    <td>${item.price}</td>
                 `;
                 tbody.appendChild(tr);
             });

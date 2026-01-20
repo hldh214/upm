@@ -89,12 +89,21 @@ def search_products():
 
     return jsonify(results)
 
+@app.route('/product/<path:product_id>')
+def product_page(product_id):
+    return render_template('index.html')
+
 @app.route('/api/history/<product_id>')
 def get_history(product_id):
     db = get_db()
     cur = db.cursor()
 
-    # Fetch data
+    # 1. Fetch product info
+    cur.execute('SELECT name, image, genderCategory FROM products WHERE productId = ?', (product_id,))
+    product_row = cur.fetchone()
+    product_info = dict(product_row) if product_row else {'name': product_id, 'image': '', 'genderCategory': ''}
+
+    # 2. Fetch history data
     cur.execute('''
         SELECT datetime, price, priceGroup 
         FROM price_history 
@@ -104,20 +113,61 @@ def get_history(product_id):
 
     rows = cur.fetchall()
 
-    data = {}
+    if not rows:
+        return jsonify({
+            'product': product_info,
+            'stats': None,
+            'history': {},
+            'timeline': []
+        })
+
+    # Calculate stats
+    prices = [r['price'] for r in rows]
+    stats = {
+        'min': min(prices),
+        'max': max(prices),
+        'current': prices[-1]
+    }
+
+    # Prepare data for Chart (grouped) and Table (filtered timeline)
+    chart_data = {}
+    timeline = []
+    last_price = None
+
     for row in rows:
+        # Chart Data
         pg = row['priceGroup']
-        if pg not in data:
-            data[pg] = []
-        data[pg].append({
+        if pg not in chart_data:
+            chart_data[pg] = []
+        chart_data[pg].append({
             'date': row['datetime'],
             'price': row['price']
         })
 
-    # Also try to fetch product info to return name?
-    # For now, let's keep the structure simple. The frontend can use the name from the search result.
+        # Timeline Data (Filtered: only show if price changes)
+        # We also treat the very first record as a change/start point
+        if row['price'] != last_price:
+            timeline.append({
+                'date': row['datetime'],
+                'price': row['price'],
+                'priceGroup': row['priceGroup']
+            })
+            last_price = row['price']
 
-    return jsonify(data)
+    # Reverse timeline for display (newest first) usually preferred, 
+    # but the original code didn't specify. The DB sort is ASC. 
+    # Let's keep it ASC or DESC? 
+    # "History" usually implies newest on top in tables? 
+    # The original index.html just appended to table body.
+    # Let's reverse the timeline for the table so users see latest changes first.
+    timeline.reverse()
+
+    return jsonify({
+        'product': product_info,
+        'stats': stats,
+        'history': chart_data,
+        'timeline': timeline
+    })
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)

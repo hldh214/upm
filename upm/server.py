@@ -40,6 +40,7 @@ def search_products():
 
     cur = db.cursor()
     wildcard = f'%{q}%'
+    results = []
 
     # 1. Search in price_history (Fallback logic became primary)
     # 1. Search in price_history

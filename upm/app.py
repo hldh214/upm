@@ -90,11 +90,10 @@ html_template = '''
             table.dataTable tbody td { padding: 8px 5px; font-size: 0.9rem; }
             table.dataTable thead th { padding: 10px 5px; font-size: 0.9rem; }
             
-            /* Resize images */
-            .col-image img { width: 60px !important; height: 60px !important; }
-            
-            /* Allow name to wrap to save some width, but keep min-width */
-            .col-name { white-space: normal; min-width: 150px; }
+            /* New Product Column Style */
+            .col-product { white-space: normal; min-width: 150px; text-align: center; }
+            .col-product img { width: 80px !important; height: 80px !important; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto; }
+            .col-product a { display: block; font-size: 0.9rem; }
         }
     </style>
 </head>
@@ -116,13 +115,12 @@ html_template = '''
             <table id="myTable" class="table table-hover">
                 <thead>
                     <tr>
+                        <th>Product</th>
+                        <th>New Price</th>
+                        <th>Old Price</th>
+                        <th>Lowest Price</th>
                         <th>Gender</th>
                         <th>Code</th>
-                        <th>Image</th>
-                        <th>Name</th>
-                        <th>Old Price</th>
-                        <th>New Price</th>
-                        <th>Lowest Price</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -138,7 +136,7 @@ html_template = '''
     $(document).ready(function() {
         var table = $('#myTable').DataTable({
             "paging": false,
-            "order": [[5, "asc"]] // Default sort by New Price
+            "order": [[1, "asc"]] // Default sort by New Price
         });
     
         var selectedGenders = new Set();
@@ -152,7 +150,7 @@ html_template = '''
                 selectedGenders.clear();
                 $('#genderFilters button').removeClass('btn-primary active').addClass('btn-outline-primary');
                 $allBtn.addClass('btn-primary active').removeClass('btn-outline-primary');
-                table.column(0).search('').draw();
+                table.column(4).search('').draw();
             } else {
                 // Clicked specific gender
                 if (selectedGenders.has(gender)) {
@@ -165,12 +163,12 @@ html_template = '''
                 
                 if (selectedGenders.size === 0) {
                     $allBtn.addClass('btn-primary active').removeClass('btn-outline-primary');
-                    table.column(0).search('').draw();
+                    table.column(4).search('').draw();
                 } else {
                     $allBtn.removeClass('btn-primary active').addClass('btn-outline-primary');
                     // Build regex: ^(GENDER1|GENDER2)$
                     var regex = '^(' + Array.from(selectedGenders).join('|') + ')$';
-                    table.column(0).search(regex, true, false).draw();
+                    table.column(4).search(regex, true, false).draw();
                 }
             }
         };
@@ -205,13 +203,16 @@ def write_report(messages, api_type):
 
         content += f'''
             <tr>
+                <td class="col-product" data-label="Product">
+                    <img alt="main_image" src="{image}" width="100" height="100" class="img-thumbnail">
+                    <br>
+                    <a href="{url}" target="_blank">{name}</a>
+                </td>
+                <td class="col-new-price" data-label="New Price" style="color: {price_color}; font-weight: bold;">{new_price}</td>
+                <td class="col-old-price" data-label="Old Price">{old_price}</td>
+                <td class="col-lowest-price" data-label="Lowest Price">{lowest_price}</td>
                 <td class="col-gender" data-label="Gender">{gender}</td>
                 <td class="col-code" data-label="Code">{code}</td>
-                <td class="col-image" data-label="Image"><img alt="main_image" src="{image}" width="100" height="100" class="img-thumbnail"></td>
-                <td class="col-name" data-label="Name"><a href="{url}" target="_blank">{name}</a></td>
-                <td class="col-old-price" data-label="Old Price">{old_price}</td>
-                <td class="col-new-price" data-label="New Price" style="color: {price_color}; font-weight: bold;">{new_price}</td>
-                <td class="col-lowest-price" data-label="Lowest Price">{lowest_price}</td>
             </tr>
         '''
 

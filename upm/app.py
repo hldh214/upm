@@ -51,13 +51,51 @@ html_template = '''
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <title>UPM Report {api_type} {date}</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f8f9fa; }
-        h1 { margin-bottom: 30px; color: #333; }
-        .filter-container { margin-bottom: 20px; }
-        .btn-filter { margin-right: 5px; margin-bottom: 5px; }
-        table.dataTable { background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        thead { background-color: #007bff; color: white; }
-        .img-thumbnail { border-radius: 8px; }
+        :root { --primary-color: #007bff; --bg-color: #f8f9fa; --card-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; padding: 20px; background-color: var(--bg-color); color: #333; }
+        h1 { margin-bottom: 30px; color: #2c3e50; font-weight: 600; }
+        
+        /* Filter Styles */
+        .filter-container { margin-bottom: 25px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .filter-label { font-weight: 500; margin-right: 10px; color: #555; }
+        .btn-filter { border-radius: 20px; padding: 6px 16px; font-weight: 500; transition: all 0.2s; }
+        
+        /* Desktop Table Styles */
+        .table-container { background: white; border-radius: 12px; box-shadow: var(--card-shadow); padding: 5px; overflow: hidden; }
+        table.dataTable { width: 100% !important; margin: 0 !important; border-collapse: separate; border-spacing: 0; }
+        table.dataTable thead th { background-color: var(--primary-color); color: white; border: none; padding: 15px; font-weight: 600; }
+        table.dataTable tbody td { padding: 12px 15px; vertical-align: middle; border-bottom: 1px solid #f0f0f0; }
+        table.dataTable tbody tr:hover { background-color: #f8fbff; }
+        .img-thumbnail { border-radius: 8px; border: 1px solid #eee; object-fit: contain; background: #fff; }
+        
+        /* Mobile / Responsive Styles */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            h1 { font-size: 1.5rem; margin-bottom: 20px; }
+            
+            /* Filter Mobile */
+            .filter-container { gap: 5px; }
+            .filter-label { width: 100%; margin-bottom: 5px; }
+            .btn-filter { flex: 1; text-align: center; padding: 5px 10px; font-size: 0.9rem; }
+
+            /* Scrollable Table View */
+            .table-container { 
+                overflow-x: auto; 
+                -webkit-overflow-scrolling: touch; 
+            }
+            
+            /* Adjust table for small screens */
+            table.dataTable { white-space: nowrap; }
+            
+            table.dataTable tbody td { padding: 8px 5px; font-size: 0.9rem; }
+            table.dataTable thead th { padding: 10px 5px; font-size: 0.9rem; }
+            
+            /* Resize images */
+            .col-image img { width: 60px !important; height: 60px !important; }
+            
+            /* Allow name to wrap to save some width, but keep min-width */
+            .col-name { white-space: normal; min-width: 150px; }
+        }
     </style>
 </head>
 <body>
@@ -65,7 +103,7 @@ html_template = '''
         <h1>UPM Report {api_type} {date}</h1>
         
         <div class="filter-container" id="genderFilters">
-            <span class="me-2">Filter by Gender:</span>
+            <span class="filter-label">Filter by Gender:</span>
             <button class="btn btn-primary btn-filter active" data-gender="" onclick="filterGender(this, '')">ALL</button>
             <button class="btn btn-outline-primary btn-filter" data-gender="WOMEN" onclick="filterGender(this, 'WOMEN')">WOMEN</button>
             <button class="btn btn-outline-primary btn-filter" data-gender="MEN" onclick="filterGender(this, 'MEN')">MEN</button>
@@ -74,22 +112,24 @@ html_template = '''
             <button class="btn btn-outline-primary btn-filter" data-gender="UNISEX" onclick="filterGender(this, 'UNISEX')">UNISEX</button>
         </div>
 
-        <table id="myTable" class="table table-hover">
-            <thead>
-                <tr>
-                    <th>Gender</th>
-                    <th>Code</th>
-                    <th>Image</th>
-                    <th>Name</th>
-                    <th>Old Price</th>
-                    <th>New Price</th>
-                    <th>Lowest Price</th>
-                </tr>
-            </thead>
-            <tbody>
-                {content}
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table id="myTable" class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Gender</th>
+                        <th>Code</th>
+                        <th>Image</th>
+                        <th>Name</th>
+                        <th>Old Price</th>
+                        <th>New Price</th>
+                        <th>Lowest Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {content}
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7/dist/jquery.min.js"></script>
@@ -165,13 +205,13 @@ def write_report(messages, api_type):
 
         content += f'''
             <tr>
-                <td>{gender}</td>
-                <td>{code}</td>
-                <td><img alt="main_image" src="{image}" width="100" height="100" class="img-thumbnail"></td>
-                <td><a href="{url}" target="_blank">{name}</a></td>
-                <td>{old_price}</td>
-                <td style="color: {price_color}; font-weight: bold;">{new_price}</td>
-                <td>{lowest_price}</td>
+                <td class="col-gender" data-label="Gender">{gender}</td>
+                <td class="col-code" data-label="Code">{code}</td>
+                <td class="col-image" data-label="Image"><img alt="main_image" src="{image}" width="100" height="100" class="img-thumbnail"></td>
+                <td class="col-name" data-label="Name"><a href="{url}" target="_blank">{name}</a></td>
+                <td class="col-old-price" data-label="Old Price">{old_price}</td>
+                <td class="col-new-price" data-label="New Price" style="color: {price_color}; font-weight: bold;">{new_price}</td>
+                <td class="col-lowest-price" data-label="Lowest Price">{lowest_price}</td>
             </tr>
         '''
 

@@ -4,10 +4,11 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-httpx = "==0.*"
+httpx = "*"
 loguru = "==0.*"
 schedule = "==1.*"
 tenacity = "*"
+flask = "==3.*"
 
 [dev-packages]
 

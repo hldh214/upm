@@ -114,6 +114,11 @@
     <script>
         let myChart = null;
         let lastResults = [];
+        
+        const URL_TEMPLATES = {
+            'UNIQLO': 'https://www.uniqlo.com/jp/ja/products/{product_id}/{price_group}',
+            'GU': 'https://www.gu-global.com/jp/ja/products/{product_id}/{price_group}'
+        };
 
         document.addEventListener('DOMContentLoaded', () => {
             const path = window.location.pathname;
@@ -174,6 +179,12 @@
             }
         }
 
+        function createLinkButton(text, productId, priceGroup, btnClass) {
+            if (!priceGroup) return '';
+            const url = URL_TEMPLATES[text].replace('{product_id}', productId).replace('{price_group}', priceGroup);
+            return `<a href="${url}" target="_blank" class="btn btn-sm ${btnClass} me-1" onclick="event.stopPropagation();">${text}</a>`;
+        }
+
         function renderResults(products) {
             const grid = document.getElementById('resultsGrid');
             grid.innerHTML = '';
@@ -181,16 +192,17 @@
                 const col = document.createElement('div');
                 col.className = 'col-md-4 col-sm-6';
 
-                let imgHtml = p.image ? `<img src="${p.image}" class="card-img-top product-img p-2" alt="Product Image">` : '';
-                let title = p.name === p.productId ? `Product ${p.productId}` : p.name;
+                const uLink = createLinkButton('UNIQLO', p.productId, p.priceGroup, 'btn-danger');
+                const gLink = createLinkButton('GU', p.productId, p.priceGroup, 'btn-primary');
 
                 col.innerHTML = `
                     <div class="card product-card h-100" onclick="loadHistory('${p.productId}')">
-                        ${imgHtml}
                         <div class="card-body text-center">
-                            <h5 class="card-title text-truncate" title="${title}">${title}</h5>
-                            <p class="card-text text-muted small">${p.productId}</p>
-                            <span class="badge bg-secondary">${p.genderCategory || ''}</span>
+                            <h5 class="card-title text-truncate">ID: ${p.productId}</h5>
+                            <div class="mt-3">
+                                ${uLink}
+                                ${gLink}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -203,6 +215,7 @@
             const searchResults = document.getElementById('searchResults');
             const detailTitle = document.getElementById('detailTitle');
             const errorArea = document.getElementById('errorArea');
+            const detailLinks = document.getElementById('detailLinks'); // We need to add this container in HTML or just append to title area
 
             searchResults.style.display = 'none';
             errorArea.style.display = 'none';
@@ -224,16 +237,25 @@
                 detailView.style.display = 'block';
 
                 const p = data.product;
-                let displayTitle = p.name === productId ? `Product ${productId}` : p.name;
-                detailTitle.textContent = `${displayTitle} (${productId})`;
+                detailTitle.innerHTML = `Product: ${productId}`;
+                
+                // Add links next to title
+                const uLink = createLinkButton('UNIQLO', productId, p.priceGroup, 'btn-danger');
+                const gLink = createLinkButton('GU', productId, p.priceGroup, 'btn-primary');
+                
+                // Hacky way to insert links if needed, or we just put them in a div below title
+                let linkContainer = document.getElementById('product-links');
+                if(!linkContainer) {
+                    linkContainer = document.createElement('div');
+                    linkContainer.id = 'product-links';
+                    linkContainer.className = 'mt-2';
+                    detailTitle.parentNode.appendChild(linkContainer);
+                }
+                linkContainer.innerHTML = `${uLink} ${gLink}`;
+
 
                 const imgEl = document.getElementById('detailImage');
-                if (p.image) {
-                    imgEl.src = p.image;
-                    imgEl.style.display = 'block';
-                } else {
-                    imgEl.style.display = 'none';
-                }
+                imgEl.style.display = 'none'; // Always hide image
 
                 if (data.stats) {
                     document.getElementById('statCurrent').textContent = data.stats.current;

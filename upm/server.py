@@ -20,17 +20,7 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
-def init_products_table(db):
-    cur = db.cursor()
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS products (
-            productId TEXT PRIMARY KEY,
-            name TEXT,
-            genderCategory TEXT,
-            image TEXT
-        )
-    ''')
-    db.commit()
+
 
 @app.route('/')
 def index():
@@ -44,48 +34,34 @@ def search_products():
 
     db = get_db()
     # Ensure table exists (in case app.py hasn't run yet)
-    init_products_table(db)
+    # Ensure table exists (in case app.py hasn't run yet)
+    # init_products_table(db)  <-- REMOVED products table logic
+
 
     cur = db.cursor()
     wildcard = f'%{q}%'
 
-    # 1. Search in products table
+    # 1. Search in price_history (Fallback logic became primary)
+    # 1. Search in price_history
     cur.execute('''
-        SELECT productId, name, genderCategory, image 
-        FROM products 
-        WHERE productId LIKE ? OR name LIKE ?
-        LIMIT 50
-    ''', (wildcard, wildcard))
-    product_rows = cur.fetchall()
-
-    results = []
-    found_ids = set()
-
-    for row in product_rows:
-        res = dict(row)
-        results.append(res)
-        found_ids.add(res['productId'])
-
-    # 2. Fallback: Search in price_history for IDs we missed (if any)
-    # This covers old data that isn't in 'products' table yet.
-    cur.execute('''
-        SELECT DISTINCT productId 
+        SELECT productId, priceGroup
         FROM price_history 
         WHERE productId LIKE ?
+        GROUP BY productId
         LIMIT 50
     ''', (wildcard,))
     history_rows = cur.fetchall()
 
     for row in history_rows:
         pid = row['productId']
-        if pid not in found_ids:
-            results.append({
-                'productId': pid,
-                'name': pid, # No name available
-                'genderCategory': '',
-                'image': ''
-            })
-            found_ids.add(pid)
+        pg = row['priceGroup']
+        results.append({
+            'productId': pid,
+            'name': pid, 
+            'genderCategory': '',
+            'image': '',
+            'priceGroup': pg
+        })
 
     return jsonify(results)
 
@@ -98,10 +74,9 @@ def get_history(product_id):
     db = get_db()
     cur = db.cursor()
 
-    # 1. Fetch product info
-    cur.execute('SELECT name, image, genderCategory FROM products WHERE productId = ?', (product_id,))
-    product_row = cur.fetchone()
-    product_info = dict(product_row) if product_row else {'name': product_id, 'image': '', 'genderCategory': ''}
+    # 1. Fetch product info (No longer available from DB)
+    # We will populate priceGroup from the history data below
+    product_info = {'name': product_id, 'image': '', 'genderCategory': '', 'priceGroup': None}
 
     # 2. Fetch history data
     cur.execute('''
@@ -154,13 +129,13 @@ def get_history(product_id):
             })
             last_price = row['price']
 
-    # Reverse timeline for display (newest first) usually preferred, 
-    # but the original code didn't specify. The DB sort is ASC. 
-    # Let's keep it ASC or DESC? 
-    # "History" usually implies newest on top in tables? 
-    # The original index.html just appended to table body.
-    # Let's reverse the timeline for the table so users see latest changes first.
+    # Reverse timeline for display (newest first)
     timeline.reverse()
+
+    # Create distinct history for chart (grouped by priceGroup)
+    # And grab the latest priceGroup for the product info
+    if rows:
+        product_info['priceGroup'] = rows[-1]['priceGroup']
 
     return jsonify({
         'product': product_info,

@@ -39,12 +39,6 @@ cur.execute('''
         price INTEGER NOT NULL,
         datetime timestamp NOT NULL
     );
-    CREATE TABLE IF NOT EXISTS products (
-        productId TEXT PRIMARY KEY,
-        name TEXT,
-        genderCategory TEXT,
-        image TEXT
-    );
 ''')
 
 html_template = '''
@@ -305,20 +299,8 @@ def write_data(items, api_type):
             VALUES (?, ?, ?, datetime('now', 'localtime'))
         ''', (product_id, price_group, price))
 
-        name = item.get('name', '')
-        gender = item.get('genderCategory', '')
-        image = ''
-        try:
-            image = list(item['images']['main'].values())[0]['image']
-        except (KeyError, IndexError, AttributeError):
-            pass
+        # name, gender, image used to be saved to products table here
 
-        local_cur.execute('''
-            INSERT OR REPLACE INTO products (productId, name, genderCategory, image)
-            VALUES (?, ?, ?, ?)
-        ''', (product_id, name, gender, image))
-
-        con.commit()
 
         message = compare_prices(item, api_type)
         if message:

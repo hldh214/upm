@@ -48,31 +48,93 @@ html_template = '''
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <title>UPM Report {api_type} {date}</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f8f9fa; }
+        h1 { margin-bottom: 30px; color: #333; }
+        .filter-container { margin-bottom: 20px; }
+        .btn-filter { margin-right: 5px; margin-bottom: 5px; }
+        table.dataTable { background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        thead { background-color: #007bff; color: white; }
+        .img-thumbnail { border-radius: 8px; }
+    </style>
 </head>
 <body>
-    <h1>UPM Report {api_type} {date}</h1>
-    <table id="myTable">
-        <thead>
-            <tr>
-                <th>Gender</th>
-                <th>Code</th>
-                <th>Image</th>
-                <th>Name</th>
-                <th>OldPrice</th>
-                <th>NewPrice</th>
-                <th>LowestPrice</th>
-            </tr>
-        </thead>
-        <tbody>
-            {content}
-        </tbody>
-    </table>
+    <div class="container-fluid">
+        <h1>UPM Report {api_type} {date}</h1>
+        
+        <div class="filter-container" id="genderFilters">
+            <span class="me-2">Filter by Gender:</span>
+            <button class="btn btn-primary btn-filter active" data-gender="" onclick="filterGender(this, '')">ALL</button>
+            <button class="btn btn-outline-primary btn-filter" data-gender="WOMEN" onclick="filterGender(this, 'WOMEN')">WOMEN</button>
+            <button class="btn btn-outline-primary btn-filter" data-gender="MEN" onclick="filterGender(this, 'MEN')">MEN</button>
+            <button class="btn btn-outline-primary btn-filter" data-gender="KIDS" onclick="filterGender(this, 'KIDS')">KIDS</button>
+            <button class="btn btn-outline-primary btn-filter" data-gender="BABY" onclick="filterGender(this, 'BABY')">BABY</button>
+            <button class="btn btn-outline-primary btn-filter" data-gender="UNISEX" onclick="filterGender(this, 'UNISEX')">UNISEX</button>
+        </div>
+
+        <table id="myTable" class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Gender</th>
+                    <th>Code</th>
+                    <th>Image</th>
+                    <th>Name</th>
+                    <th>Old Price</th>
+                    <th>New Price</th>
+                    <th>Lowest Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {content}
+            </tbody>
+        </table>
+    </div>
 </body>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7/dist/jquery.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.js"></script>
 <script>
-    $(document).ready(() => $('#myTable').DataTable());
+    $(document).ready(function() {
+        var table = $('#myTable').DataTable({
+            "paging": false,
+            "order": [[5, "asc"]] // Default sort by New Price
+        });
+    
+        var selectedGenders = new Set();
+    
+        window.filterGender = function(btn, gender) {
+            var $btn = $(btn);
+            var $allBtn = $('#genderFilters button[data-gender=""]');
+            
+            if (gender === '') {
+                // Clicked ALL
+                selectedGenders.clear();
+                $('#genderFilters button').removeClass('btn-primary active').addClass('btn-outline-primary');
+                $allBtn.addClass('btn-primary active').removeClass('btn-outline-primary');
+                table.column(0).search('').draw();
+            } else {
+                // Clicked specific gender
+                if (selectedGenders.has(gender)) {
+                    selectedGenders.delete(gender);
+                    $btn.removeClass('btn-primary active').addClass('btn-outline-primary');
+                } else {
+                    selectedGenders.add(gender);
+                    $btn.addClass('btn-primary active').removeClass('btn-outline-primary');
+                }
+                
+                if (selectedGenders.size === 0) {
+                    $allBtn.addClass('btn-primary active').removeClass('btn-outline-primary');
+                    table.column(0).search('').draw();
+                } else {
+                    $allBtn.removeClass('btn-primary active').addClass('btn-outline-primary');
+                    // Build regex: ^(GENDER1|GENDER2)$
+                    var regex = '^(' + Array.from(selectedGenders).join('|') + ')$';
+                    table.column(0).search(regex, true, false).draw();
+                }
+            }
+        };
+    });
 </script>
 </html>
 '''
@@ -105,10 +167,10 @@ def write_report(messages, api_type):
             <tr>
                 <td>{gender}</td>
                 <td>{code}</td>
-                <td><img alt="main_image" src="{image}" width="100" height="100"></td>
+                <td><img alt="main_image" src="{image}" width="100" height="100" class="img-thumbnail"></td>
                 <td><a href="{url}" target="_blank">{name}</a></td>
                 <td>{old_price}</td>
-                <td style="color: {price_color}">{new_price}</td>
+                <td style="color: {price_color}; font-weight: bold;">{new_price}</td>
                 <td>{lowest_price}</td>
             </tr>
         '''
@@ -137,11 +199,11 @@ def compare_prices(item, api_type):
     old_price, old_datetime = rows[1]
     new_price, new_datetime = rows[0]
 
-    # ignore the same and rising price
+    # ignore the same and prices that haven't dropped
     if new_price >= old_price:
         return
 
-    # query history the lowest price
+    # query the lowest historical price
     cur.execute('''
         SELECT price FROM price_history
         WHERE productId = ? AND priceGroup = ?

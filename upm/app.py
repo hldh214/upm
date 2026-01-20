@@ -39,6 +39,12 @@ cur.execute('''
         price INTEGER NOT NULL,
         datetime timestamp NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS products (
+        productId TEXT PRIMARY KEY,
+        name TEXT,
+        genderCategory TEXT,
+        image TEXT
+    );
 ''')
 
 html_template = '''
@@ -298,6 +304,19 @@ def write_data(items, api_type):
             INSERT INTO price_history (productId, priceGroup, price, datetime)
             VALUES (?, ?, ?, datetime('now', 'localtime'))
         ''', (product_id, price_group, price))
+
+        name = item.get('name', '')
+        gender = item.get('genderCategory', '')
+        image = ''
+        try:
+            image = list(item['images']['main'].values())[0]['image']
+        except (KeyError, IndexError, AttributeError):
+            pass
+
+        local_cur.execute('''
+            INSERT OR REPLACE INTO products (productId, name, genderCategory, image)
+            VALUES (?, ?, ?, ?)
+        ''', (product_id, name, gender, image))
 
         con.commit()
 

@@ -10,25 +10,43 @@
         body { background-color: #f8f9fa; }
         .card { box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: none; }
         .header { margin-bottom: 2rem; }
+        .product-card { cursor: pointer; transition: transform 0.2s; }
+        .product-card:hover { transform: translateY(-5px); border-color: #007bff; }
+        .product-img { height: 150px; object-fit: contain; }
     </style>
 </head>
 <body>
     <div class="container py-5">
         <div class="header text-center">
             <h1>Product Price History</h1>
-            <p class="text-muted">Enter a Product ID to view historical price trends</p>
+            <p class="text-muted">Search by Product ID or Name</p>
         </div>
 
+        <!-- Search Bar -->
         <div class="row justify-content-center mb-5">
-            <div class="col-md-6">
+            <div class="col-md-8">
                 <div class="input-group">
-                    <input type="text" id="productId" class="form-control form-control-lg" placeholder="Enter Product ID">
-                    <button class="btn btn-primary btn-lg" type="button" onclick="searchProduct()">Search</button>
+                    <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="e.g. 450635 or Heattech">
+                    <button class="btn btn-primary btn-lg" type="button" onclick="performSearch()">Search</button>
                 </div>
             </div>
         </div>
 
-        <div id="resultArea" style="display:none;">
+        <!-- Search Results List -->
+        <div id="searchResults" class="row mb-4" style="display:none;">
+            <div class="col-12"><h4 class="mb-3">Search Results</h4></div>
+            <div id="resultsGrid" class="row g-3">
+                <!-- Product cards go here -->
+            </div>
+        </div>
+
+        <!-- Detail View -->
+        <div id="detailView" style="display:none;">
+            <div class="d-flex align-items-center mb-3">
+                <button class="btn btn-outline-secondary me-3" onclick="showResults()">Back to Results</button>
+                <h3 id="detailTitle" class="m-0"></h3>
+            </div>
+
             <div class="card mb-4">
                 <div class="card-body">
                     <canvas id="priceChart"></canvas>
@@ -61,37 +79,115 @@
 
     <script>
         let myChart = null;
+        let lastResults = [];
 
-        async function searchProduct() {
-            const pid = document.getElementById('productId').value.trim();
-            if (!pid) return;
+        async function performSearch() {
+            const q = document.getElementById('searchInput').value.trim();
+            if (!q) return;
 
-            const resultArea = document.getElementById('resultArea');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const searchResults = document.getElementById('searchResults');
+            const detailView = document.getElementById('detailView');
             const errorArea = document.getElementById('errorArea');
-            const tbody = document.querySelector('#dataTable tbody');
 
-            resultArea.style.display = 'none';
+            // Reset UI
+            detailView.style.display = 'none';
+            searchResults.style.display = 'none';
             errorArea.style.display = 'none';
-            tbody.innerHTML = '';
+            resultsGrid.innerHTML = '';
 
             try {
-                const response = await fetch(`/api/history/${pid}`);
+                const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
                 const data = await response.json();
+                lastResults = data;
 
-                if (Object.keys(data).length === 0) {
-                    errorArea.textContent = 'No history found for this Product ID.';
+                if (data.length === 0) {
+                    errorArea.textContent = 'No products found.';
                     errorArea.style.display = 'block';
                     return;
                 }
 
-                resultArea.style.display = 'block';
+                if (data.length === 1) {
+                    // Exact/Single match -> show directly
+                    loadProduct(data[0]);
+                } else {
+                    // Multiple matches -> show list
+                    renderResults(data);
+                    searchResults.style.display = 'flex'; // row needs flex/block? row is flex by default
+                }
+
+            } catch (err) {
+                console.error(err);
+                errorArea.textContent = 'Error searching products.';
+                errorArea.style.display = 'block';
+            }
+        }
+
+        function renderResults(products) {
+            const grid = document.getElementById('resultsGrid');
+            products.forEach(p => {
+                const col = document.createElement('div');
+                col.className = 'col-md-4 col-sm-6';
+
+                let imgHtml = p.image ? `<img src="${p.image}" class="card-img-top product-img p-2" alt="Product Image">` : '';
+                let title = p.name === p.productId ? `Product ${p.productId}` : p.name;
+
+                col.innerHTML = `
+                    <div class="card product-card h-100" onclick='loadProduct(${JSON.stringify(p)})'>
+                        ${imgHtml}
+                        <div class="card-body text-center">
+                            <h5 class="card-title text-truncate" title="${title}">${title}</h5>
+                            <p class="card-text text-muted small">${p.productId}</p>
+                            <span class="badge bg-secondary">${p.genderCategory || ''}</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(col);
+            });
+        }
+
+        async function loadProduct(product) {
+            const detailView = document.getElementById('detailView');
+            const searchResults = document.getElementById('searchResults');
+            const detailTitle = document.getElementById('detailTitle');
+            const errorArea = document.getElementById('errorArea');
+
+            searchResults.style.display = 'none';
+            errorArea.style.display = 'none';
+
+            let displayTitle = product.name === product.productId ? `Product ${product.productId}` : product.name;
+            detailTitle.textContent = `${displayTitle} (${product.productId})`;
+
+            try {
+                const response = await fetch(`/api/history/${product.productId}`);
+                const data = await response.json();
+
+                if (Object.keys(data).length === 0) {
+                    errorArea.textContent = 'No history data for this product.';
+                    errorArea.style.display = 'block';
+                    return;
+                }
+
+                detailView.style.display = 'block';
                 renderChart(data);
                 renderTable(data);
 
             } catch (err) {
                 console.error(err);
-                errorArea.textContent = 'Error fetching data.';
+                errorArea.textContent = 'Error fetching history.';
                 errorArea.style.display = 'block';
+            }
+        }
+
+        function showResults() {
+            if (lastResults.length > 1) {
+                document.getElementById('detailView').style.display = 'none';
+                document.getElementById('searchResults').style.display = 'flex';
+            } else {
+                // If only 1 result, back clears search? Or does nothing?
+                // Let's just hide detail and show search bar empty? No.
+                // If 1 result, we are effectively in "search mode".
+                document.getElementById('detailView').style.display = 'none';
             }
         }
 
@@ -106,7 +202,6 @@
             const colors = ['#007bff', '#28a745', '#dc3545', '#ffc107', '#17a2b8'];
             let colorIdx = 0;
 
-            // Collect all unique labels (dates) and sort them
             let allDates = new Set();
             for (const group in data) {
                 data[group].forEach(item => allDates.add(item.date));
@@ -114,10 +209,6 @@
             const labels = Array.from(allDates).sort();
 
             for (const group in data) {
-                // Prepare data points.
-                // Since x-axis is categorical (labels), we need to match data to labels or use x/y objects.
-                // Using x/y objects with Chart.js is flexible.
-
                 const groupData = data[group].map(d => ({x: d.date, y: d.price}));
 
                 datasets.push({
@@ -155,6 +246,7 @@
 
         function renderTable(data) {
             const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = ''; // Clear previous
             const rows = [];
 
             for (const group in data) {
@@ -167,7 +259,6 @@
                 });
             }
 
-            // Sort by date desc
             rows.sort((a, b) => b.date.localeCompare(a.date));
 
             rows.forEach(row => {
@@ -181,10 +272,9 @@
             });
         }
 
-        // Allow Enter key to search
-        document.getElementById('productId').addEventListener('keypress', function (e) {
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
-                searchProduct();
+                performSearch();
             }
         });
     </script>

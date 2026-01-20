@@ -96,6 +96,20 @@ html_template = '''
             .col-product img {{ width: 80px !important; height: 80px !important; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto; }}
             .col-product a {{ display: block; font-size: 0.9rem; }}
         }}
+        
+        /* Mobile-first hover: disable hover style by default (fix sticky hover) */
+        .btn-filter.btn-outline-primary:hover {{
+            background-color: transparent;
+            color: var(--bs-primary);
+        }}
+
+        /* Enable hover style only for devices that support hover */
+        @media (hover: hover) {{
+            .btn-filter.btn-outline-primary:hover {{
+                background-color: var(--bs-primary);
+                color: #fff;
+            }}
+        }}
     </style>
 </head>
 <body>
@@ -174,6 +188,7 @@ html_template = '''
                     table.column(4).search(regex, true, false).draw();
                 }}
             }}
+            $btn.blur();
         }};
     }});
 </script>

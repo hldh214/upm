@@ -98,4 +98,78 @@ class ProductController extends Controller
 
         return response()->json($stats);
     }
+
+    /**
+     * Get recently price-dropped products.
+     * 
+     * A product is considered "price dropped" if its current price is lower
+     * than its previous price record within the specified days.
+     */
+    public function priceDropped(Request $request): JsonResponse
+    {
+        $days = min($request->input('days', 7), 30);
+        $limit = min($request->input('limit', 20), 50);
+
+        // Get products that have price history records showing a price drop
+        $products = Product::query()
+            ->whereHas('priceHistories', function ($query) use ($days) {
+                $query->where('created_at', '>=', now()->subDays($days));
+            })
+            ->with(['priceHistories' => function ($query) use ($days) {
+                $query->where('created_at', '>=', now()->subDays($days))
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10);
+            }])
+            ->get()
+            ->filter(function ($product) {
+                $histories = $product->priceHistories->sortByDesc('created_at')->values();
+                
+                if ($histories->count() < 2) {
+                    // If only one record, compare with current price
+                    // Current price lower than first history = dropped
+                    if ($histories->count() === 1) {
+                        return $product->current_price < $histories->first()->price;
+                    }
+                    return false;
+                }
+                
+                // Compare latest two price records
+                $latestPrice = $histories->first()->price;
+                $previousPrice = $histories->skip(1)->first()->price;
+                
+                return $latestPrice < $previousPrice;
+            })
+            ->map(function ($product) {
+                $histories = $product->priceHistories->sortByDesc('created_at')->values();
+                $previousPrice = $histories->count() >= 2 
+                    ? $histories->skip(1)->first()->price 
+                    : ($histories->count() === 1 ? $histories->first()->price : $product->highest_price);
+                
+                return [
+                    'id' => $product->id,
+                    'product_id' => $product->product_id,
+                    'price_group' => $product->price_group,
+                    'name' => $product->name,
+                    'brand' => $product->brand,
+                    'gender' => $product->gender,
+                    'image_url' => $product->image_url,
+                    'current_price' => $product->current_price,
+                    'previous_price' => $previousPrice,
+                    'lowest_price' => $product->lowest_price,
+                    'highest_price' => $product->highest_price,
+                    'drop_amount' => $previousPrice - $product->current_price,
+                    'drop_percentage' => round((1 - $product->current_price / $previousPrice) * 100, 1),
+                    'dropped_at' => $histories->first()->created_at->toIso8601String(),
+                ];
+            })
+            ->sortByDesc('drop_percentage')
+            ->take($limit)
+            ->values();
+
+        return response()->json([
+            'data' => $products,
+            'total' => $products->count(),
+            'days' => $days,
+        ]);
+    }
 }

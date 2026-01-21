@@ -1,6 +1,6 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "upm",
+    "name": "hldh214/upm",
     "type": "project",
     "description": "A Laravel project",
     "keywords": ["laravel", "framework"],

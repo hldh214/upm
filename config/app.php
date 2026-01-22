@@ -67,6 +67,9 @@ return [
 
     'timezone' => 'UTC',
 
+    // Timezone for scheduled tasks, hardcoded to Tokyo time
+    'schedule_timezone' => 'Asia/Tokyo',
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

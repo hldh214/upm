@@ -14,7 +14,7 @@ class ImportLegacyPriceHistory extends Command
      *
      * @var string
      */
-    protected $signature = 'upm:import-legacy 
+    protected $signature = 'upm:import-legacy
                             {path : Path to the legacy SQLite database file}
                             {--dry-run : Show what would be imported without actually importing}';
 
@@ -35,6 +35,7 @@ class ImportLegacyPriceHistory extends Command
 
         if (!file_exists($dbPath)) {
             $this->error("Database file not found: {$dbPath}");
+
             return Command::FAILURE;
         }
 
@@ -54,6 +55,7 @@ class ImportLegacyPriceHistory extends Command
             $this->info("Found {$totalRecords} total records in legacy database.");
         } catch (\Exception $e) {
             $this->error("Failed to connect to legacy database: {$e->getMessage()}");
+
             return Command::FAILURE;
         }
 
@@ -98,6 +100,7 @@ class ImportLegacyPriceHistory extends Command
                 $stats['products_not_found']++;
                 $notFoundProducts[] = "{$legacyProduct->productId}/{$legacyProduct->priceGroup}";
                 $bar->advance();
+
                 continue;
             }
 
@@ -125,11 +128,13 @@ class ImportLegacyPriceHistory extends Command
 
                 if ($exists) {
                     $stats['records_skipped_duplicate']++;
+
                     continue;
                 }
 
                 if (!$dryRun) {
-                    PriceHistory::create([
+                    // Use DB::table to bypass Eloquent's automatic timestamp handling
+                    DB::table('price_histories')->insert([
                         'product_id' => $product->id,
                         'price' => $change['price'],
                         'created_at' => $change['datetime'],
@@ -192,7 +197,6 @@ class ImportLegacyPriceHistory extends Command
      * Extract only the records where price actually changed.
      *
      * @param \Illuminate\Support\Collection $histories
-     * @return array
      */
     private function extractPriceChanges($histories): array
     {

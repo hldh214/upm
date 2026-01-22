@@ -187,34 +187,48 @@ function productDetail() {
         history: [],
         chart: null,
         days: 90,
+        abortController: null,
 
         async init() {
             await this.fetchHistory(90);
         },
 
         async fetchHistory(days) {
+            // 取消之前的请求
+            if (this.abortController) {
+                this.abortController.abort();
+            }
+            
+            this.abortController = new AbortController();
             this.days = days;
             
             try {
-                const response = await fetch(`/api/products/${this.productId}/history?days=${days}`);
+                const response = await fetch(
+                    `/api/products/${this.productId}/history?days=${days}`,
+                    { signal: this.abortController.signal }
+                );
                 const data = await response.json();
                 this.history = data.history;
                 this.renderChart();
             } catch (error) {
-                console.error('Failed to fetch history:', error);
+                if (error.name !== 'AbortError') {
+                    console.error('Failed to fetch history:', error);
+                }
             }
         },
 
         renderChart() {
-            const ctx = document.getElementById('priceChart');
+            const canvas = document.getElementById('priceChart');
+            if (!canvas) return;
             
             if (this.chart) {
                 this.chart.destroy();
+                this.chart = null;
             }
 
             if (this.history.length === 0) return;
 
-            this.chart = new Chart(ctx, {
+            this.chart = new Chart(canvas, {
                 type: 'line',
                 data: {
                     labels: this.history.map(h => formatDate(h.date, 'MM-DD')),
@@ -232,6 +246,7 @@ function productDetail() {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: false,
                     plugins: {
                         legend: {
                             display: false

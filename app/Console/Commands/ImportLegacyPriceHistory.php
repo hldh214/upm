@@ -60,13 +60,13 @@ class ImportLegacyPriceHistory extends Command
         }
 
         // Get unique product/priceGroup combinations
-        $products = DB::connection('legacy')
+        $legacyProducts = DB::connection('legacy')
             ->table('price_history')
             ->select('productId', 'priceGroup')
             ->distinct()
             ->get();
 
-        $this->info("Found {$products->count()} unique product/priceGroup combinations.");
+        $this->info("Found {$legacyProducts->count()} unique product/priceGroup combinations.");
         $this->newLine();
 
         if ($dryRun) {
@@ -74,21 +74,23 @@ class ImportLegacyPriceHistory extends Command
             $this->newLine();
         }
 
-        $bar = $this->output->createProgressBar($products->count());
+        $bar = $this->output->createProgressBar($legacyProducts->count());
         $bar->start();
 
         $stats = [
             'products_processed' => 0,
             'products_matched' => 0,
             'products_not_found' => 0,
+            'products_updated' => 0,
             'price_changes_found' => 0,
             'records_imported' => 0,
             'records_skipped_duplicate' => 0,
         ];
 
         $notFoundProducts = [];
+        $updatedProductIds = [];
 
-        foreach ($products as $legacyProduct) {
+        foreach ($legacyProducts as $legacyProduct) {
             $stats['products_processed']++;
 
             // Find matching product in new database
@@ -118,6 +120,8 @@ class ImportLegacyPriceHistory extends Command
             $priceChanges = $this->extractPriceChanges($histories);
             $stats['price_changes_found'] += count($priceChanges);
 
+            $importedForThisProduct = false;
+
             // Import price changes
             foreach ($priceChanges as $change) {
                 // Check if this exact record already exists
@@ -143,6 +147,12 @@ class ImportLegacyPriceHistory extends Command
                 }
 
                 $stats['records_imported']++;
+                $importedForThisProduct = true;
+            }
+
+            // Track products that need price stats update
+            if ($importedForThisProduct) {
+                $updatedProductIds[] = $product->id;
             }
 
             $bar->advance();
@@ -150,6 +160,14 @@ class ImportLegacyPriceHistory extends Command
 
         $bar->finish();
         $this->newLine(2);
+
+        // Update product price statistics
+        if (!empty($updatedProductIds)) {
+            $this->info('Updating product price statistics...');
+            $stats['products_updated'] = $this->updateProductPriceStats($updatedProductIds, $dryRun);
+        }
+
+        $this->newLine();
 
         // Display results
         $this->info('Import completed!');
@@ -163,6 +181,7 @@ class ImportLegacyPriceHistory extends Command
                 ['Price changes detected', $stats['price_changes_found']],
                 ['Records imported', $stats['records_imported']],
                 ['Duplicates skipped', $stats['records_skipped_duplicate']],
+                ['Products stats updated', $stats['products_updated']],
             ]
         );
 
@@ -214,5 +233,69 @@ class ImportLegacyPriceHistory extends Command
         }
 
         return $changes;
+    }
+
+    /**
+     * Update product price statistics (current_price, lowest_price, highest_price)
+     * based on all price histories.
+     *
+     * @return int Number of products updated
+     */
+    private function updateProductPriceStats(array $productIds, bool $dryRun): int
+    {
+        $updated = 0;
+
+        $bar = $this->output->createProgressBar(count($productIds));
+        $bar->start();
+
+        foreach ($productIds as $productId) {
+            $product = Product::find($productId);
+            if (!$product) {
+                $bar->advance();
+
+                continue;
+            }
+
+            // Get all price histories for this product
+            $priceStats = DB::table('price_histories')
+                ->where('product_id', $productId)
+                ->selectRaw('MIN(price) as lowest, MAX(price) as highest')
+                ->first();
+
+            // Get the most recent price (current price)
+            $latestHistory = DB::table('price_histories')
+                ->where('product_id', $productId)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($priceStats && $latestHistory) {
+                $newLowest = (int)$priceStats->lowest;
+                $newHighest = (int)$priceStats->highest;
+                $newCurrent = (int)$latestHistory->price;
+
+                // Only update if values actually changed
+                if (
+                    $product->lowest_price !== $newLowest ||
+                    $product->highest_price !== $newHighest ||
+                    $product->current_price !== $newCurrent
+                ) {
+                    if (!$dryRun) {
+                        $product->update([
+                            'current_price' => $newCurrent,
+                            'lowest_price' => $newLowest,
+                            'highest_price' => $newHighest,
+                        ]);
+                    }
+                    $updated++;
+                }
+            }
+
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+
+        return $updated;
     }
 }

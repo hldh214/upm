@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Product;
 use App\Models\PriceHistory;
+use App\Models\Product;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -171,11 +171,17 @@ class PriceCrawlerService
                 $updated++;
             }
 
-            // Record price history
-            PriceHistory::create([
-                'product_id' => $product->id,
-                'price' => $price,
-            ]);
+            // Record price history only if price changed
+            $lastHistory = PriceHistory::where('product_id', $product->id)
+                ->latest()
+                ->first();
+
+            if (!$lastHistory || $lastHistory->price != $price) {
+                PriceHistory::create([
+                    'product_id' => $product->id,
+                    'price' => $price,
+                ]);
+            }
         }
 
         return [

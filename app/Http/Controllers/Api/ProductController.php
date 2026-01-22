@@ -64,12 +64,10 @@ class ProductController extends Controller
             ->where('created_at', '>=', now()->subDays($days))
             ->orderBy('created_at', 'asc')
             ->get()
-            ->map(function ($item) {
-                return [
-                    'date' => $item->created_at->format('Y-m-d H:i:s'),
-                    'price' => $item->price,
-                ];
-            });
+            ->map(fn ($item) => [
+                'date' => $item->created_at,
+                'price' => $item->price,
+            ]);
 
         return response()->json([
             'product_id' => $product->id,
@@ -101,7 +99,7 @@ class ProductController extends Controller
 
     /**
      * Get recently price-dropped products.
-     * 
+     *
      * A product is considered "price dropped" if its current price is lower
      * than its previous price record within the specified days.
      */
@@ -123,7 +121,7 @@ class ProductController extends Controller
             ->get()
             ->filter(function ($product) {
                 $histories = $product->priceHistories->sortByDesc('created_at')->values();
-                
+
                 if ($histories->count() < 2) {
                     // If only one record, compare with current price
                     // Current price lower than first history = dropped
@@ -132,19 +130,19 @@ class ProductController extends Controller
                     }
                     return false;
                 }
-                
+
                 // Compare latest two price records
                 $latestPrice = $histories->first()->price;
                 $previousPrice = $histories->skip(1)->first()->price;
-                
+
                 return $latestPrice < $previousPrice;
             })
             ->map(function ($product) {
                 $histories = $product->priceHistories->sortByDesc('created_at')->values();
-                $previousPrice = $histories->count() >= 2 
-                    ? $histories->skip(1)->first()->price 
+                $previousPrice = $histories->count() >= 2
+                    ? $histories->skip(1)->first()->price
                     : ($histories->count() === 1 ? $histories->first()->price : $product->highest_price);
-                
+
                 return [
                     'id' => $product->id,
                     'product_id' => $product->product_id,

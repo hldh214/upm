@@ -153,7 +153,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     <template x-for="(item, index) in history.slice().reverse()" :key="item.date">
                         <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="item.date"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" x-text="$date(item.date)"></td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="'¥' + item.price.toLocaleString()"></td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                 <template x-if="index < history.length - 1">
@@ -217,7 +217,7 @@ function productDetail() {
             this.chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: this.history.map(h => h.date),
+                    labels: this.history.map(h => formatDate(h.date, 'MM-DD')),
                     datasets: [{
                         label: 'Price (¥)',
                         data: this.history.map(h => h.price),

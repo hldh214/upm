@@ -2,5 +2,5 @@
 
 use Illuminate\Support\Facades\Schedule;
 
-// Run crawler daily at 4:00 AM
-Schedule::command('upm:crawl')->dailyAt('04:00');
+// Run crawler every four hours at 25 minutes past the hour
+Schedule::command('upm:crawl')->everyFourHours(25);

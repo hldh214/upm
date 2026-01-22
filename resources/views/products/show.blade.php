@@ -198,10 +198,10 @@ function productDetail() {
             if (this.abortController) {
                 this.abortController.abort();
             }
-            
+
             this.abortController = new AbortController();
             this.days = days;
-            
+
             try {
                 const response = await fetch(
                     `/api/products/${this.productId}/history?days=${days}`,
@@ -220,7 +220,7 @@ function productDetail() {
         renderChart() {
             const canvas = document.getElementById('priceChart');
             if (!canvas) return;
-            
+
             if (this.chart) {
                 this.chart.destroy();
                 this.chart = null;
@@ -231,7 +231,7 @@ function productDetail() {
             this.chart = new Chart(canvas, {
                 type: 'line',
                 data: {
-                    labels: this.history.map(h => formatDate(h.date, 'MM-DD')),
+                    labels: this.history.map(h => formatDate(h.date)),
                     datasets: [{
                         label: 'Price (¥)',
                         data: this.history.map(h => h.price),
@@ -281,11 +281,11 @@ function productDetail() {
 
         getPriceChange(index) {
             if (index === 0) return '-';
-            
+
             const current = this.history[index].price;
             const previous = this.history[index - 1].price;
             const diff = current - previous;
-            
+
             if (diff === 0) return '→ ¥0';
             if (diff > 0) return '↑ ¥' + diff.toLocaleString();
             return '↓ ¥' + Math.abs(diff).toLocaleString();

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Product extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'product_id',
         'price_group',
@@ -44,7 +45,7 @@ class Product extends Model
             ? 'https://www.uniqlo.com/jp/ja/products/'
             : 'https://www.gu-global.com/jp/ja/products/';
 
-        return $baseUrl . $this->product_id . '/' . $this->price_group;
+        return $baseUrl.$this->product_id.'/'.$this->price_group;
     }
 
     /**
@@ -58,6 +59,7 @@ class Product extends Model
                     ->orWhere('product_id', 'like', "%{$keyword}%");
             });
         }
+
         return $query;
     }
 
@@ -69,6 +71,7 @@ class Product extends Model
         if ($brand) {
             return $query->where('brand', $brand);
         }
+
         return $query;
     }
 
@@ -80,6 +83,73 @@ class Product extends Model
         if ($gender) {
             return $query->where('gender', $gender);
         }
+
         return $query;
+    }
+
+    /**
+     * Scope to filter by recent price changes.
+     *
+     * @param  array|string|null  $priceChange  'dropped', 'raised', or ['dropped', 'raised']
+     * @param  int  $days  Number of days to look back
+     */
+    public function scopePriceChange($query, $priceChange, int $days = 7)
+    {
+        if (empty($priceChange)) {
+            return $query;
+        }
+
+        // Normalize to array
+        $changes = is_array($priceChange) ? $priceChange : [$priceChange];
+        $validChanges = array_intersect($changes, ['dropped', 'raised']);
+
+        if (empty($validChanges)) {
+            return $query;
+        }
+
+        $cutoffDate = now()->subDays($days);
+
+        return $query->whereHas('priceHistories', function ($q) use ($cutoffDate) {
+            $q->where('created_at', '>=', $cutoffDate);
+        })
+            ->where(function ($q) use ($validChanges, $cutoffDate) {
+                // Use subquery to get the latest price history before cutoff and compare
+                $q->whereRaw('EXISTS (
+                SELECT 1 FROM (
+                    SELECT 
+                        ph1.product_id,
+                        ph1.price as latest_price,
+                        (SELECT ph2.price FROM price_histories ph2 
+                         WHERE ph2.product_id = ph1.product_id 
+                         AND ph2.created_at < ph1.created_at 
+                         ORDER BY ph2.created_at DESC LIMIT 1) as previous_price
+                    FROM price_histories ph1
+                    WHERE ph1.product_id = products.id
+                    AND ph1.created_at >= ?
+                    ORDER BY ph1.created_at DESC
+                    LIMIT 1
+                ) as price_change
+                WHERE price_change.previous_price IS NOT NULL
+                AND (
+                    '.$this->buildPriceChangeCondition($validChanges).'
+                )
+            )', [$cutoffDate]);
+            });
+    }
+
+    /**
+     * Build SQL condition for price change types.
+     */
+    private function buildPriceChangeCondition(array $changes): string
+    {
+        $conditions = [];
+        if (in_array('dropped', $changes)) {
+            $conditions[] = 'price_change.latest_price < price_change.previous_price';
+        }
+        if (in_array('raised', $changes)) {
+            $conditions[] = 'price_change.latest_price > price_change.previous_price';
+        }
+
+        return implode(' OR ', $conditions);
     }
 }

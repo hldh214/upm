@@ -16,24 +16,104 @@ class ProductController extends Controller
     {
         $perPage = min($request->input('per_page', 20), 100);
 
-        $products = Product::query()
+        // Parse price_change - can be comma-separated string or array
+        $priceChange = $request->input('price_change');
+        if (is_string($priceChange) && str_contains($priceChange, ',')) {
+            $priceChange = explode(',', $priceChange);
+        }
+        $changeDays = min($request->input('change_days', 7), 30);
+
+        $query = Product::query()
             ->search($request->input('q'))
             ->brand($request->input('brand'))
             ->gender($request->input('gender'))
-            ->when($request->input('sort'), function ($query, $sort) {
-                return match ($sort) {
-                    'price_asc' => $query->orderBy('current_price', 'asc'),
-                    'price_desc' => $query->orderBy('current_price', 'desc'),
-                    'name' => $query->orderBy('name', 'asc'),
-                    'updated' => $query->orderBy('updated_at', 'desc'),
-                    default => $query->orderBy('id', 'desc'),
-                };
-            }, function ($query) {
-                return $query->orderBy('id', 'desc');
-            })
-            ->paginate($perPage);
+            ->priceChange($priceChange, $changeDays);
+
+        // Apply sorting
+        $sort = $request->input('sort');
+        $query->when($sort, function ($query, $sort) {
+            return match ($sort) {
+                'price_asc' => $query->orderBy('current_price', 'asc'),
+                'price_desc' => $query->orderBy('current_price', 'desc'),
+                'name' => $query->orderBy('name', 'asc'),
+                'updated' => $query->orderBy('updated_at', 'desc'),
+                'drop_percent' => $query->orderByRaw('(highest_price - current_price) / highest_price DESC'),
+                default => $query->orderBy('id', 'desc'),
+            };
+        }, function ($query) {
+            return $query->orderBy('id', 'desc');
+        });
+
+        $products = $query->paginate($perPage);
+
+        // Add price change info when filtering by price_change
+        if ($priceChange) {
+            $productIds = $products->pluck('id')->toArray();
+            $priceChangeInfo = $this->getPriceChangeInfo($productIds, $changeDays);
+
+            $products->getCollection()->transform(function ($product) use ($priceChangeInfo) {
+                $info = $priceChangeInfo[$product->id] ?? null;
+                if ($info) {
+                    $product->previous_price = $info['previous_price'];
+                    $product->price_change_amount = $info['change_amount'];
+                    $product->price_change_percent = $info['change_percent'];
+                    $product->price_change_type = $info['change_type'];
+                }
+
+                return $product;
+            });
+        }
 
         return response()->json($products);
+    }
+
+    /**
+     * Get price change information for given product IDs.
+     */
+    private function getPriceChangeInfo(array $productIds, int $days): array
+    {
+        if (empty($productIds)) {
+            return [];
+        }
+
+        $cutoffDate = now()->subDays($days);
+        $result = [];
+
+        $products = Product::whereIn('id', $productIds)
+            ->with(['priceHistories' => function ($query) use ($cutoffDate) {
+                $query->where('created_at', '>=', $cutoffDate->subDays(30)) // Get extra history for previous price
+                    ->orderBy('created_at', 'desc')
+                    ->limit(10);
+            }])
+            ->get();
+
+        foreach ($products as $product) {
+            $histories = $product->priceHistories->sortByDesc('created_at')->values();
+
+            if ($histories->count() < 2) {
+                continue;
+            }
+
+            $latestPrice = $histories->first()->price;
+            $previousPrice = $histories->skip(1)->first()->price;
+
+            if ($latestPrice === $previousPrice) {
+                continue;
+            }
+
+            $changeAmount = $latestPrice - $previousPrice;
+            $changePercent = round(abs($changeAmount) / $previousPrice * 100, 1);
+            $changeType = $latestPrice < $previousPrice ? 'dropped' : 'raised';
+
+            $result[$product->id] = [
+                'previous_price' => $previousPrice,
+                'change_amount' => abs($changeAmount),
+                'change_percent' => $changePercent,
+                'change_type' => $changeType,
+            ];
+        }
+
+        return $result;
     }
 
     /**
@@ -95,79 +175,5 @@ class ProductController extends Controller
         ];
 
         return response()->json($stats);
-    }
-
-    /**
-     * Get recently price-dropped products.
-     *
-     * A product is considered "price dropped" if its current price is lower
-     * than its previous price record within the specified days.
-     */
-    public function priceDropped(Request $request): JsonResponse
-    {
-        $days = min($request->input('days', 7), 30);
-        $limit = min($request->input('limit', 20), 50);
-
-        // Get products that have price history records showing a price drop
-        $products = Product::query()
-            ->whereHas('priceHistories', function ($query) use ($days) {
-                $query->where('created_at', '>=', now()->subDays($days));
-            })
-            ->with(['priceHistories' => function ($query) use ($days) {
-                $query->where('created_at', '>=', now()->subDays($days))
-                    ->orderBy('created_at', 'desc')
-                    ->limit(10);
-            }])
-            ->get()
-            ->filter(function ($product) {
-                $histories = $product->priceHistories->sortByDesc('created_at')->values();
-
-                if ($histories->count() < 2) {
-                    // If only one record, compare with current price
-                    // Current price lower than first history = dropped
-                    if ($histories->count() === 1) {
-                        return $product->current_price < $histories->first()->price;
-                    }
-                    return false;
-                }
-
-                // Compare latest two price records
-                $latestPrice = $histories->first()->price;
-                $previousPrice = $histories->skip(1)->first()->price;
-
-                return $latestPrice < $previousPrice;
-            })
-            ->map(function ($product) {
-                $histories = $product->priceHistories->sortByDesc('created_at')->values();
-                $previousPrice = $histories->count() >= 2
-                    ? $histories->skip(1)->first()->price
-                    : ($histories->count() === 1 ? $histories->first()->price : $product->highest_price);
-
-                return [
-                    'id' => $product->id,
-                    'product_id' => $product->product_id,
-                    'price_group' => $product->price_group,
-                    'name' => $product->name,
-                    'brand' => $product->brand,
-                    'gender' => $product->gender,
-                    'image_url' => $product->image_url,
-                    'current_price' => $product->current_price,
-                    'previous_price' => $previousPrice,
-                    'lowest_price' => $product->lowest_price,
-                    'highest_price' => $product->highest_price,
-                    'drop_amount' => $previousPrice - $product->current_price,
-                    'drop_percentage' => round((1 - $product->current_price / $previousPrice) * 100, 1),
-                    'dropped_at' => $histories->first()->created_at->toIso8601String(),
-                ];
-            })
-            ->sortByDesc('drop_percentage')
-            ->take($limit)
-            ->values();
-
-        return response()->json([
-            'data' => $products,
-            'total' => $products->count(),
-            'days' => $days,
-        ]);
     }
 }

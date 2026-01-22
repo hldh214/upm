@@ -4,74 +4,11 @@
 
 @section('content')
 <div x-data="productList()" x-init="init()">
-    <!-- Price Dropped Section -->
-    <div x-show="priceDroppedProducts.length > 0" x-cloak class="mb-8">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <span class="text-red-500">&#x25BC;</span>
-                Price Drops
-                <span class="text-sm font-normal text-gray-500" x-text="'(' + priceDroppedProducts.length + ' items in last ' + priceDroppedDays + ' days)'"></span>
-            </h2>
-            <select
-                x-model="priceDroppedDays"
-                @change="fetchPriceDroppedProducts()"
-                class="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 border"
-            >
-                <option value="1">Today</option>
-                <option value="3">Last 3 days</option>
-                <option value="7">Last 7 days</option>
-                <option value="14">Last 14 days</option>
-            </select>
-        </div>
-        
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            <template x-for="product in priceDroppedProducts" :key="'dropped-' + product.id">
-                <a :href="'/products/' + product.id" class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow border-2 border-red-100">
-                    <!-- Product Image -->
-                    <div class="aspect-square bg-gray-200 relative">
-                        <img
-                            :src="product.image_url || 'https://via.placeholder.com/300'"
-                            :alt="product.name"
-                            class="w-full h-full object-cover"
-                            loading="lazy"
-                        >
-                        <!-- Price Drop Badge -->
-                        <span class="absolute top-2 right-2 px-2 py-1 text-xs font-bold bg-red-500 text-white rounded">
-                            -<span x-text="product.drop_percentage"></span>%
-                        </span>
-                        <!-- Brand Badge -->
-                        <span
-                            class="absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded"
-                            :class="product.brand === 'uniqlo' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'"
-                            x-text="product.brand.toUpperCase()"
-                        ></span>
-                    </div>
-                    
-                    <!-- Product Info -->
-                    <div class="p-3">
-                        <h3 class="font-medium text-gray-900 text-sm line-clamp-2 mb-2" x-text="product.name"></h3>
-                        
-                        <div class="flex items-baseline gap-2 flex-wrap">
-                            <span class="text-lg font-bold text-red-600" x-text="'¥' + product.current_price.toLocaleString()"></span>
-                            <span class="text-sm text-gray-400 line-through" x-text="'¥' + product.previous_price.toLocaleString()"></span>
-                        </div>
-                        <div class="mt-1 text-xs text-green-600 font-medium">
-                            <span x-text="'-¥' + product.drop_amount.toLocaleString()"></span>
-                        </div>
-                    </div>
-                </a>
-            </template>
-        </div>
-    </div>
-
-    <!-- Divider -->
-    <div x-show="priceDroppedProducts.length > 0" x-cloak class="border-t border-gray-200 mb-8"></div>
-
     <!-- Search and Filters -->
     <div class="bg-white rounded-lg shadow p-4 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Search Input -->
-            <div class="md:col-span-2">
+            <div class="lg:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
                 <input
                     type="text"
@@ -114,6 +51,56 @@
             </div>
         </div>
         
+        <!-- Price Change Filter Row -->
+        <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex flex-wrap items-center gap-4">
+                <label class="text-sm font-medium text-gray-700">Price Changes:</label>
+                
+                <!-- Price Change Checkboxes -->
+                <div class="flex items-center gap-4">
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input
+                            type="checkbox"
+                            x-model="filters.priceDropped"
+                            @change="search()"
+                            class="rounded border-gray-300 text-red-600 shadow-sm focus:border-red-500 focus:ring-red-500"
+                        >
+                        <span class="ml-2 text-sm text-gray-700 flex items-center gap-1">
+                            <span class="text-red-500">▼</span> Dropped
+                        </span>
+                    </label>
+                    
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input
+                            type="checkbox"
+                            x-model="filters.priceRaised"
+                            @change="search()"
+                            class="rounded border-gray-300 text-green-600 shadow-sm focus:border-green-500 focus:ring-green-500"
+                        >
+                        <span class="ml-2 text-sm text-gray-700 flex items-center gap-1">
+                            <span class="text-green-500">▲</span> Raised
+                        </span>
+                    </label>
+                </div>
+                
+                <!-- Days Selector (only show when price change filter is active) -->
+                <div x-show="filters.priceDropped || filters.priceRaised" x-cloak class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600">in last</label>
+                    <select
+                        x-model="filters.changeDays"
+                        @change="search()"
+                        class="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 border"
+                    >
+                        <option value="1">1 day</option>
+                        <option value="3">3 days</option>
+                        <option value="7">7 days</option>
+                        <option value="14">14 days</option>
+                        <option value="30">30 days</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
         <!-- Sort -->
         <div class="mt-4 flex items-center gap-4">
             <label class="text-sm font-medium text-gray-700">Sort by:</label>
@@ -125,6 +112,7 @@
                 <option value="">Latest</option>
                 <option value="price_asc">Price: Low to High</option>
                 <option value="price_desc">Price: High to Low</option>
+                <option value="drop_percent" x-show="filters.priceDropped || filters.priceRaised">Change %: High to Low</option>
                 <option value="name">Name</option>
                 <option value="updated">Recently Updated</option>
             </select>
@@ -163,7 +151,9 @@
     <!-- Product Grid -->
     <div x-show="!loading" x-cloak class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <template x-for="product in products" :key="product.id">
-            <a :href="'/products/' + product.id" class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow">
+            <a :href="'/products/' + product.id" 
+               class="bg-white rounded-lg shadow overflow-hidden hover:shadow-lg transition-shadow"
+               :class="{ 'ring-2 ring-red-200': product.price_change_type === 'dropped', 'ring-2 ring-green-200': product.price_change_type === 'raised' }">
                 <!-- Product Image -->
                 <div class="aspect-square bg-gray-200 relative">
                     <img
@@ -184,27 +174,57 @@
                         class="absolute top-2 right-2 px-2 py-1 text-xs bg-gray-800 text-white rounded"
                         x-text="product.gender"
                     ></span>
+                    <!-- Price Change Badge -->
+                    <span
+                        x-show="product.price_change_percent"
+                        class="absolute bottom-2 right-2 px-2 py-1 text-xs font-bold rounded"
+                        :class="product.price_change_type === 'dropped' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'"
+                    >
+                        <span x-text="product.price_change_type === 'dropped' ? '▼' : '▲'"></span>
+                        <span x-text="product.price_change_percent + '%'"></span>
+                    </span>
                 </div>
                 
                 <!-- Product Info -->
                 <div class="p-4">
                     <h3 class="font-medium text-gray-900 line-clamp-2 mb-2" x-text="product.name"></h3>
                     
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-xl font-bold text-gray-900" x-text="'¥' + product.current_price.toLocaleString()"></span>
-                        <span
-                            x-show="product.current_price < product.highest_price"
-                            class="text-sm text-green-600"
-                        >
-                            <span x-text="'-' + Math.round((1 - product.current_price / product.highest_price) * 100) + '%'"></span>
-                        </span>
-                    </div>
+                    <!-- Price Display - Changes based on price change filter -->
+                    <template x-if="product.price_change_type">
+                        <div>
+                            <div class="flex items-baseline gap-2 flex-wrap">
+                                <span class="text-xl font-bold" 
+                                      :class="product.price_change_type === 'dropped' ? 'text-red-600' : 'text-green-600'" 
+                                      x-text="'¥' + product.current_price.toLocaleString()"></span>
+                                <span class="text-sm text-gray-400 line-through" x-text="'¥' + product.previous_price.toLocaleString()"></span>
+                            </div>
+                            <div class="mt-1 text-xs font-medium"
+                                 :class="product.price_change_type === 'dropped' ? 'text-red-600' : 'text-green-600'">
+                                <span x-text="(product.price_change_type === 'dropped' ? '-' : '+') + '¥' + product.price_change_amount.toLocaleString()"></span>
+                            </div>
+                        </div>
+                    </template>
                     
-                    <div class="mt-2 text-xs text-gray-500">
-                        <span>Lowest: ¥<span x-text="product.lowest_price.toLocaleString()"></span></span>
-                        <span class="mx-1">|</span>
-                        <span>Highest: ¥<span x-text="product.highest_price.toLocaleString()"></span></span>
-                    </div>
+                    <!-- Normal Price Display -->
+                    <template x-if="!product.price_change_type">
+                        <div>
+                            <div class="flex items-baseline gap-2">
+                                <span class="text-xl font-bold text-gray-900" x-text="'¥' + product.current_price.toLocaleString()"></span>
+                                <span
+                                    x-show="product.current_price < product.highest_price"
+                                    class="text-sm text-green-600"
+                                >
+                                    <span x-text="'-' + Math.round((1 - product.current_price / product.highest_price) * 100) + '%'"></span>
+                                </span>
+                            </div>
+                            
+                            <div class="mt-2 text-xs text-gray-500">
+                                <span>Lowest: ¥<span x-text="product.lowest_price.toLocaleString()"></span></span>
+                                <span class="mx-1">|</span>
+                                <span>Highest: ¥<span x-text="product.highest_price.toLocaleString()"></span></span>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </a>
         </template>
@@ -266,8 +286,6 @@
 function productList() {
     return {
         products: [],
-        priceDroppedProducts: [],
-        priceDroppedDays: 7,
         stats: {},
         loading: true,
         filters: {
@@ -276,7 +294,10 @@ function productList() {
             gender: '',
             sort: '',
             page: 1,
-            per_page: 20
+            per_page: 20,
+            priceDropped: false,
+            priceRaised: false,
+            changeDays: 7
         },
         pagination: {
             current_page: 1,
@@ -290,8 +311,7 @@ function productList() {
             
             await Promise.all([
                 this.fetchProducts(),
-                this.fetchStats(),
-                this.fetchPriceDroppedProducts()
+                this.fetchStats()
             ]);
             
             // Listen for browser back/forward
@@ -308,6 +328,15 @@ function productList() {
             this.filters.brand = params.get('brand') || '';
             this.filters.gender = params.get('gender') || '';
             this.filters.sort = params.get('sort') || '';
+            
+            // Parse price change filters
+            const priceChange = params.get('price_change');
+            if (priceChange) {
+                const changes = priceChange.split(',');
+                this.filters.priceDropped = changes.includes('dropped');
+                this.filters.priceRaised = changes.includes('raised');
+            }
+            this.filters.changeDays = parseInt(params.get('change_days')) || 7;
         },
 
         updateUrl() {
@@ -317,6 +346,15 @@ function productList() {
             if (this.filters.brand) params.set('brand', this.filters.brand);
             if (this.filters.gender) params.set('gender', this.filters.gender);
             if (this.filters.sort) params.set('sort', this.filters.sort);
+            
+            // Add price change params
+            const priceChanges = [];
+            if (this.filters.priceDropped) priceChanges.push('dropped');
+            if (this.filters.priceRaised) priceChanges.push('raised');
+            if (priceChanges.length > 0) {
+                params.set('price_change', priceChanges.join(','));
+                params.set('change_days', this.filters.changeDays);
+            }
             
             const newUrl = params.toString() 
                 ? window.location.pathname + '?' + params.toString()
@@ -329,9 +367,21 @@ function productList() {
             this.loading = true;
             
             const params = new URLSearchParams();
-            Object.entries(this.filters).forEach(([key, value]) => {
-                if (value) params.append(key, value);
-            });
+            if (this.filters.q) params.append('q', this.filters.q);
+            if (this.filters.brand) params.append('brand', this.filters.brand);
+            if (this.filters.gender) params.append('gender', this.filters.gender);
+            if (this.filters.sort) params.append('sort', this.filters.sort);
+            params.append('page', this.filters.page);
+            params.append('per_page', this.filters.per_page);
+            
+            // Add price change params
+            const priceChanges = [];
+            if (this.filters.priceDropped) priceChanges.push('dropped');
+            if (this.filters.priceRaised) priceChanges.push('raised');
+            if (priceChanges.length > 0) {
+                params.append('price_change', priceChanges.join(','));
+                params.append('change_days', this.filters.changeDays);
+            }
 
             try {
                 const response = await fetch('/api/products?' + params.toString());
@@ -347,16 +397,6 @@ function productList() {
                 console.error('Failed to fetch products:', error);
             } finally {
                 this.loading = false;
-            }
-        },
-
-        async fetchPriceDroppedProducts() {
-            try {
-                const response = await fetch('/api/products/price-dropped?days=' + this.priceDroppedDays + '&limit=12');
-                const data = await response.json();
-                this.priceDroppedProducts = data.data;
-            } catch (error) {
-                console.error('Failed to fetch price dropped products:', error);
             }
         },
 
@@ -386,33 +426,26 @@ function productList() {
 
         /**
          * Generate Google-style page numbers array
-         * Example: 1 2 3 4 5 ... 18 19 (when on page 1-5)
-         * Example: 1 2 ... 5 6 7 8 9 ... 18 19 (when in middle)
-         * Example: 1 2 ... 15 16 17 18 19 (when near end)
          */
         getPageNumbers() {
             const current = this.pagination.current_page;
             const last = this.pagination.last_page;
-            const delta = 2; // Number of pages to show on each side of current
+            const delta = 2;
             const pages = [];
             
             if (last <= 9) {
-                // Show all pages if total is small
                 for (let i = 1; i <= last; i++) {
                     pages.push(i);
                 }
                 return pages;
             }
             
-            // Always show first two pages
             pages.push(1);
             if (last > 1) pages.push(2);
             
-            // Calculate range around current page
             let rangeStart = Math.max(3, current - delta);
             let rangeEnd = Math.min(last - 2, current + delta);
             
-            // Adjust range if near start or end
             if (current <= 4) {
                 rangeEnd = Math.max(rangeEnd, 5);
             }
@@ -420,24 +453,20 @@ function productList() {
                 rangeStart = Math.min(rangeStart, last - 4);
             }
             
-            // Add ellipsis before range if needed
             if (rangeStart > 3) {
                 pages.push('...');
             }
             
-            // Add range pages
             for (let i = rangeStart; i <= rangeEnd; i++) {
                 if (i > 2 && i < last - 1) {
                     pages.push(i);
                 }
             }
             
-            // Add ellipsis after range if needed
             if (rangeEnd < last - 2) {
                 pages.push('...');
             }
             
-            // Always show last two pages
             if (last > 2) pages.push(last - 1);
             pages.push(last);
             

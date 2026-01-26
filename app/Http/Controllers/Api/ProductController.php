@@ -69,6 +69,8 @@ class ProductController extends Controller
 
     /**
      * Get price change information for given product IDs.
+     *
+     * Finds price changes within the specified period (from N days ago at 00:00 to now).
      */
     private function getPriceChangeInfo(array $productIds, int $days): array
     {
@@ -76,34 +78,49 @@ class ProductController extends Controller
             return [];
         }
 
-        $cutoffDate = now()->subDays($days);
+        // Start from N days ago at 00:00:00
+        $startDate = now()->subDays($days)->startOfDay();
         $result = [];
 
         $products = Product::whereIn('id', $productIds)
-            ->with(['priceHistories' => function ($query) use ($cutoffDate) {
-                $query->where('created_at', '>=', $cutoffDate->subDays(30)) // Get extra history for previous price
-                    ->orderBy('created_at', 'desc')
-                    ->limit(10);
+            ->with(['priceHistories' => function ($query) use ($startDate) {
+                // Get histories within the period plus some before for comparison
+                $query->where('created_at', '>=', $startDate->copy()->subDays(30))
+                    ->orderBy('created_at', 'asc');
             }])
             ->get();
 
         foreach ($products as $product) {
-            $histories = $product->priceHistories->sortByDesc('created_at')->values();
+            $histories = $product->priceHistories->sortBy('created_at')->values();
 
             if ($histories->count() < 2) {
                 continue;
             }
 
-            $latestPrice = $histories->first()->price;
-            $previousPrice = $histories->skip(1)->first()->price;
+            // Find the first record within the period and compare with the record before it
+            $changeFound = false;
+            $previousPrice = null;
+            $newPrice = null;
 
-            if ($latestPrice === $previousPrice) {
+            foreach ($histories as $index => $history) {
+                if ($history->created_at >= $startDate && $index > 0) {
+                    $previousRecord = $histories[$index - 1];
+                    if ($history->price !== $previousRecord->price) {
+                        $previousPrice = $previousRecord->price;
+                        $newPrice = $history->price;
+                        $changeFound = true;
+                        break;
+                    }
+                }
+            }
+
+            if (! $changeFound) {
                 continue;
             }
 
-            $changeAmount = $latestPrice - $previousPrice;
+            $changeAmount = $newPrice - $previousPrice;
             $changePercent = round(abs($changeAmount) / $previousPrice * 100, 1);
-            $changeType = $latestPrice < $previousPrice ? 'dropped' : 'raised';
+            $changeType = $newPrice < $previousPrice ? 'dropped' : 'raised';
 
             $result[$product->id] = [
                 'previous_price' => $previousPrice,

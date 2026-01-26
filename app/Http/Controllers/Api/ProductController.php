@@ -70,7 +70,9 @@ class ProductController extends Controller
     /**
      * Get price change information for given product IDs.
      *
-     * Finds price changes within the specified period (from N days ago at 00:00 to now).
+     * Since price_histories only stores records when price changes,
+     * we find the latest record within the period and its preceding record
+     * to determine the price change.
      */
     private function getPriceChangeInfo(array $productIds, int $days): array
     {
@@ -83,38 +85,40 @@ class ProductController extends Controller
         $result = [];
 
         $products = Product::whereIn('id', $productIds)
-            ->with(['priceHistories' => function ($query) use ($startDate) {
-                // Get histories within the period plus some before for comparison
-                $query->where('created_at', '>=', $startDate->copy()->subDays(30))
-                    ->orderBy('created_at', 'asc');
+            ->with(['priceHistories' => function ($query) {
+                // Get recent history records to find the change
+                $query->orderBy('created_at', 'desc')->limit(10);
             }])
             ->get();
 
         foreach ($products as $product) {
-            $histories = $product->priceHistories->sortByDesc('created_at')->values();
+            $histories = $product->priceHistories->sortBy('created_at')->values();
 
             if ($histories->count() < 2) {
                 continue;
             }
 
-            // Find the most recent price change within the period
-            $changeFound = false;
-            $previousPrice = null;
-            $newPrice = null;
+            // Find records within the period (these represent price changes)
+            $recordsInPeriod = $histories->filter(fn ($h) => $h->created_at >= $startDate);
 
-            foreach ($histories as $index => $history) {
-                if ($history->created_at >= $startDate && $index < $histories->count() - 1) {
-                    $olderRecord = $histories[$index + 1];
-                    if ($history->price !== $olderRecord->price) {
-                        $previousPrice = $olderRecord->price;
-                        $newPrice = $history->price;
-                        $changeFound = true;
-                        break;
-                    }
-                }
+            if ($recordsInPeriod->isEmpty()) {
+                continue;
             }
 
-            if (!$changeFound) {
+            // Get the latest record in the period (the most recent price change)
+            $latestChange = $recordsInPeriod->last();
+            $latestIndex = $histories->search(fn ($h) => $h->id === $latestChange->id);
+
+            if ($latestIndex === false || $latestIndex === 0) {
+                continue;
+            }
+
+            // The previous record has the price before the change
+            $previousRecord = $histories[$latestIndex - 1];
+            $previousPrice = $previousRecord->price;
+            $newPrice = $latestChange->price;
+
+            if ($previousPrice === $newPrice) {
                 continue;
             }
 
@@ -161,7 +165,7 @@ class ProductController extends Controller
             ->where('created_at', '>=', now()->subDays($days))
             ->orderBy('created_at', 'asc')
             ->get()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'date' => $item->created_at,
                 'price' => $item->price,
             ]);

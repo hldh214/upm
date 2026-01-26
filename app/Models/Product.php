@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB;
 
 class Product extends Model
 {
@@ -91,8 +90,8 @@ class Product extends Model
     /**
      * Scope to filter by recent price changes.
      *
-     * Finds products that had a price change within the specified period.
-     * For "last N days", it looks from (N days ago at 00:00) to now.
+     * Since price_histories only stores records when price changes,
+     * any record within the period indicates a price change.
      *
      * @param  array|string|null  $priceChange  'dropped', 'raised', or ['dropped', 'raised']
      * @param  int  $days  Number of days to look back
@@ -114,37 +113,21 @@ class Product extends Model
         // Start from N days ago at 00:00:00
         $startDate = now()->subDays($days)->startOfDay();
 
-        // Find products that have price changes within the period
-        // A price change means: there exists a record within the period whose price
-        // differs from a previous record (either before or within the period)
-        return $query->whereIn('id', function ($subquery) use ($startDate, $validChanges) {
-            $subquery->select('ph_new.product_id')
-                ->from('price_histories as ph_new')
-                ->join('price_histories as ph_old', function ($join) {
-                    $join->on('ph_new.product_id', '=', 'ph_old.product_id')
-                        ->on('ph_old.created_at', '<', 'ph_new.created_at');
-                })
-                // The newer record must be within our period
-                ->where('ph_new.created_at', '>=', $startDate)
-                // Get the most recent old record for comparison
-                ->whereNotExists(function ($q) {
-                    $q->select(DB::raw(1))
-                        ->from('price_histories as ph_between')
-                        ->whereColumn('ph_between.product_id', 'ph_new.product_id')
-                        ->whereColumn('ph_between.created_at', '>', 'ph_old.created_at')
-                        ->whereColumn('ph_between.created_at', '<', 'ph_new.created_at');
-                })
+        // Since each price_history record represents a price change,
+        // we just need to find products with records in the period
+        // and check if the price went up or down compared to current_price
+        return $query->whereHas('priceHistories', function ($q) use ($startDate, $validChanges) {
+            $q->where('created_at', '>=', $startDate)
                 ->where(function ($q) use ($validChanges) {
                     if (in_array('dropped', $validChanges)) {
-                        // New price < old price = dropped
-                        $q->orWhereColumn('ph_new.price', '<', 'ph_old.price');
+                        // Record price > current price means price dropped
+                        $q->orWhereColumn('price', '>', 'products.current_price');
                     }
                     if (in_array('raised', $validChanges)) {
-                        // New price > old price = raised
-                        $q->orWhereColumn('ph_new.price', '>', 'ph_old.price');
+                        // Record price < current price means price raised
+                        $q->orWhereColumn('price', '<', 'products.current_price');
                     }
-                })
-                ->distinct();
+                });
         });
     }
 }

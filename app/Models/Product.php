@@ -90,6 +90,8 @@ class Product extends Model
     /**
      * Scope to filter by recent price changes.
      *
+     * Compares current_price with the price from N days ago.
+     *
      * @param  array|string|null  $priceChange  'dropped', 'raised', or ['dropped', 'raised']
      * @param  int  $days  Number of days to look back
      */
@@ -109,47 +111,20 @@ class Product extends Model
 
         $cutoffDate = now()->subDays($days);
 
-        return $query->whereHas('priceHistories', function ($q) use ($cutoffDate) {
-            $q->where('created_at', '>=', $cutoffDate);
-        })
-            ->where(function ($q) use ($validChanges, $cutoffDate) {
-                // Use subquery to get the latest price history before cutoff and compare
-                $q->whereRaw('EXISTS (
-                SELECT 1 FROM (
-                    SELECT 
-                        ph1.product_id,
-                        ph1.price as latest_price,
-                        (SELECT ph2.price FROM price_histories ph2 
-                         WHERE ph2.product_id = ph1.product_id 
-                         AND ph2.created_at < ph1.created_at 
-                         ORDER BY ph2.created_at DESC LIMIT 1) as previous_price
-                    FROM price_histories ph1
-                    WHERE ph1.product_id = products.id
-                    AND ph1.created_at >= ?
-                    ORDER BY ph1.created_at DESC
-                    LIMIT 1
-                ) as price_change
-                WHERE price_change.previous_price IS NOT NULL
-                AND (
-                    '.$this->buildPriceChangeCondition($validChanges).'
-                )
-            )', [$cutoffDate]);
-            });
-    }
-
-    /**
-     * Build SQL condition for price change types.
-     */
-    private function buildPriceChangeCondition(array $changes): string
-    {
-        $conditions = [];
-        if (in_array('dropped', $changes)) {
-            $conditions[] = 'price_change.latest_price < price_change.previous_price';
-        }
-        if (in_array('raised', $changes)) {
-            $conditions[] = 'price_change.latest_price > price_change.previous_price';
-        }
-
-        return implode(' OR ', $conditions);
+        // Find products that have a price history record from before cutoff
+        // and compare that old price with current_price
+        return $query->whereHas('priceHistories', function ($q) use ($cutoffDate, $validChanges) {
+            $q->where('created_at', '<', $cutoffDate)
+                ->where(function ($q) use ($validChanges) {
+                    if (in_array('dropped', $validChanges)) {
+                        // Old price > current price = dropped
+                        $q->orWhereColumn('price', '>', 'products.current_price');
+                    }
+                    if (in_array('raised', $validChanges)) {
+                        // Old price < current price = raised
+                        $q->orWhereColumn('price', '<', 'products.current_price');
+                    }
+                });
+        });
     }
 }

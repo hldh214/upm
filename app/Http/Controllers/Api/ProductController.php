@@ -91,22 +91,22 @@ class ProductController extends Controller
             ->get();
 
         foreach ($products as $product) {
-            $histories = $product->priceHistories->sortBy('created_at')->values();
+            $histories = $product->priceHistories->sortByDesc('created_at')->values();
 
             if ($histories->count() < 2) {
                 continue;
             }
 
-            // Find the first record within the period and compare with the record before it
+            // Find the most recent price change within the period
             $changeFound = false;
             $previousPrice = null;
             $newPrice = null;
 
             foreach ($histories as $index => $history) {
-                if ($history->created_at >= $startDate && $index > 0) {
-                    $previousRecord = $histories[$index - 1];
-                    if ($history->price !== $previousRecord->price) {
-                        $previousPrice = $previousRecord->price;
+                if ($history->created_at >= $startDate && $index < $histories->count() - 1) {
+                    $olderRecord = $histories[$index + 1];
+                    if ($history->price !== $olderRecord->price) {
+                        $previousPrice = $olderRecord->price;
                         $newPrice = $history->price;
                         $changeFound = true;
                         break;
@@ -114,7 +114,7 @@ class ProductController extends Controller
                 }
             }
 
-            if (! $changeFound) {
+            if (!$changeFound) {
                 continue;
             }
 
@@ -161,7 +161,7 @@ class ProductController extends Controller
             ->where('created_at', '>=', now()->subDays($days))
             ->orderBy('created_at', 'asc')
             ->get()
-            ->map(fn ($item) => [
+            ->map(fn($item) => [
                 'date' => $item->created_at,
                 'price' => $item->price,
             ]);

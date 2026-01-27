@@ -97,38 +97,6 @@
     <div class="mt-8 bg-white rounded-lg shadow p-6">
         <h2 class="text-xl font-bold text-gray-900 mb-4">Price History</h2>
 
-        <!-- Time Range Selector -->
-        <div class="flex gap-2 mb-4">
-            <button
-                @click="fetchHistory(30)"
-                :class="days === 30 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'"
-                class="px-4 py-2 rounded-md transition-colors"
-            >
-                30 Days
-            </button>
-            <button
-                @click="fetchHistory(90)"
-                :class="days === 90 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'"
-                class="px-4 py-2 rounded-md transition-colors"
-            >
-                90 Days
-            </button>
-            <button
-                @click="fetchHistory(180)"
-                :class="days === 180 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'"
-                class="px-4 py-2 rounded-md transition-colors"
-            >
-                180 Days
-            </button>
-            <button
-                @click="fetchHistory(365)"
-                :class="days === 365 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'"
-                class="px-4 py-2 rounded-md transition-colors"
-            >
-                1 Year
-            </button>
-        </div>
-
         <div class="relative h-80">
             <canvas id="priceChart"></canvas>
         </div>
@@ -186,25 +154,23 @@ function productDetail() {
         productId: {{ $product->id }},
         history: [],
         chart: null,
-        days: 90,
         abortController: null,
 
         async init() {
-            await this.fetchHistory(90);
+            await this.fetchHistory();
         },
 
-        async fetchHistory(days) {
+        async fetchHistory() {
             // 取消之前的请求
             if (this.abortController) {
                 this.abortController.abort();
             }
 
             this.abortController = new AbortController();
-            this.days = days;
 
             try {
                 const response = await fetch(
-                    `/api/products/${this.productId}/history?days=${days}`,
+                    `/api/products/${this.productId}/history`,
                     { signal: this.abortController.signal }
                 );
                 const data = await response.json();

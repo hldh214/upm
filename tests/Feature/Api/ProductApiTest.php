@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\Product;
 use App\Models\PriceHistory;
+use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -255,47 +255,51 @@ class ProductApiTest extends TestCase
             ->assertJsonCount(3, 'history');
     }
 
-    public function test_price_history_respects_days_parameter(): void
+    public function test_price_history_limits_to_90_records(): void
     {
         $product = Product::factory()->create();
 
-        // Create history for 100 days
+        // Create 100 history records
         for ($i = 0; $i < 100; $i++) {
             $this->travel(-$i)->days();
             PriceHistory::create([
                 'product_id' => $product->id,
-                'price' => 1990,
+                'price' => 1990 + $i,
             ]);
             $this->travelBack();
         }
 
-        $response = $this->getJson("/api/products/{$product->id}/history?days=30");
+        $response = $this->getJson("/api/products/{$product->id}/history");
 
         $response->assertStatus(200);
-        // Should return records from last 30 days
-        $this->assertLessThanOrEqual(31, count($response->json('history')));
+        // Should return at most 90 records
+        $this->assertLessThanOrEqual(90, count($response->json('history')));
     }
 
-    public function test_price_history_limits_days_to_365(): void
+    public function test_price_history_returns_most_recent_records(): void
     {
         $product = Product::factory()->create();
 
-        // Create history for 400 days
-        for ($i = 0; $i < 400; $i++) {
+        // Create 100 history records with unique prices
+        for ($i = 99; $i >= 0; $i--) {
             $this->travel(-$i)->days();
             PriceHistory::create([
                 'product_id' => $product->id,
-                'price' => 1990,
+                'price' => 1000 + (99 - $i), // older records have lower prices
             ]);
             $this->travelBack();
         }
 
-        $response = $this->getJson("/api/products/{$product->id}/history?days=500");
+        $response = $this->getJson("/api/products/{$product->id}/history");
 
         $response->assertStatus(200);
+        $history = $response->json('history');
 
-        // Should only return max 366 records (365 days + today)
-        $this->assertLessThanOrEqual(366, count($response->json('history')));
+        // Should return the 90 most recent records (prices 1010-1099)
+        // First record should be the oldest of the 90 most recent (price 1010)
+        $this->assertEquals(1010, $history[0]['price']);
+        // Last record should be the most recent (price 1099)
+        $this->assertEquals(1099, $history[count($history) - 1]['price']);
     }
 
     public function test_price_history_returns_history_in_chronological_order(): void

@@ -154,17 +154,18 @@ class ProductController extends Controller
 
     /**
      * Get product price history.
+     * Returns the most recent 90 price change records.
      */
-    public function priceHistory(int $id, Request $request): JsonResponse
+    public function priceHistory(int $id): JsonResponse
     {
         $product = Product::findOrFail($id);
 
-        $days = min($request->input('days', 90), 365);
-
         $history = $product->priceHistories()
-            ->where('created_at', '>=', now()->subDays($days))
-            ->orderBy('created_at', 'asc')
+            ->orderBy('created_at', 'desc')
+            ->limit(90)
             ->get()
+            ->reverse()
+            ->values()
             ->map(fn ($item) => [
                 'date' => $item->created_at,
                 'price' => $item->price,

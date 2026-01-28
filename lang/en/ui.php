@@ -3,11 +3,13 @@
 return [
     // Navigation
     'tagline' => 'Uniqlo/GU Price Monitor',
+    'promo_banner' => 'Track UNIQLO & GU prices - Never miss a deal',
 
     // Hero Section
     'hero_title' => 'Find Price Drops on UNIQLO & GU',
     'hero_subtitle' => 'Track price changes and never miss a deal on your favorite items',
     'price_drops_count' => 'Price Drops (3 days)',
+    'price_drops_label' => 'items on sale',
 
     // Filter Tabs
     'tab_price_drops' => 'Price Drops',

@@ -3,11 +3,13 @@
 return [
     // Navigation
     'tagline' => 'Uniqlo/GU 価格モニター',
+    'promo_banner' => 'UNIQLO & GU の価格をチェック - お得な情報を見逃さない',
 
     // Hero Section
     'hero_title' => 'UNIQLO & GU の値下げ商品を見つけよう',
     'hero_subtitle' => '価格変動をトラッキングして、お気に入りアイテムをお得にゲット',
     'price_drops_count' => '値下げ (3日間)',
+    'price_drops_label' => '点がセール中',
 
     // Filter Tabs
     'tab_price_drops' => '値下げ',

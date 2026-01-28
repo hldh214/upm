@@ -2,12 +2,27 @@
 <html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'UPM - Uniqlo/GU Price Monitor')</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'uq-red': '#FF0000',
+                        'gu-blue': '#0033FF',
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -51,35 +66,60 @@
 
     <style>
         [x-cloak] { display: none !important; }
+        
+        /* UNIQLO-inspired clean styles */
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Hide scrollbar but keep functionality */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* Sale price animation */
+        @keyframes pulse-sale {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        .animate-sale {
+            animation: pulse-sale 2s ease-in-out infinite;
+        }
     </style>
 
     @stack('styles')
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-sm" x-data="languageSwitcher()">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <a href="{{ route('home') }}" class="text-xl font-bold text-gray-900">
-                        UPM
-                    </a>
-                    <span class="ml-2 text-sm text-gray-500 hidden sm:inline">{{ __('ui.tagline') }}</span>
-                </div>
+<body class="bg-white min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-white border-b border-gray-200" x-data="languageSwitcher()">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center justify-between h-14 px-4">
+                <!-- Logo -->
+                <a href="{{ route('home') }}" class="flex items-center gap-2">
+                    <span class="text-xl font-bold tracking-tight">UPM</span>
+                </a>
                 
-                <!-- Language Switcher -->
-                <div class="flex items-center">
+                <!-- Right Side -->
+                <div class="flex items-center gap-3">
+                    <!-- Language Switcher -->
                     <div class="relative">
                         <button
                             @click="open = !open"
-                            class="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                            class="flex items-center gap-1 px-2 py-1.5 text-sm text-gray-600 hover:text-black transition-colors"
                         >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <span x-text="languages[currentLang]"></span>
+                            <span x-text="currentLang.toUpperCase()" class="font-medium"></span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </button>
                         
@@ -88,35 +128,38 @@
                             x-show="open"
                             @click.away="open = false"
                             x-cloak
-                            class="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg border z-50"
+                            x-transition:enter="transition ease-out duration-100"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95"
+                            class="absolute right-0 mt-1 w-32 bg-white border border-gray-200 shadow-lg z-50"
                         >
                             <template x-for="(name, code) in languages" :key="code">
                                 <button
                                     @click="setLanguage(code)"
-                                    :class="currentLang === code ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'"
-                                    class="w-full px-4 py-2 text-sm text-left flex items-center gap-2"
-                                >
-                                    <span x-show="currentLang === code" class="text-blue-600">✓</span>
-                                    <span x-show="currentLang !== code" class="w-4"></span>
-                                    <span x-text="name"></span>
-                                </button>
+                                    :class="currentLang === code ? 'bg-gray-50 font-medium' : 'hover:bg-gray-50'"
+                                    class="w-full px-4 py-2.5 text-sm text-left text-gray-700"
+                                    x-text="name"
+                                ></button>
                             </template>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <main class="flex-1">
         @yield('content')
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t mt-auto">
-        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-            <p class="text-center text-sm text-gray-500">
+    <footer class="border-t border-gray-200 mt-auto">
+        <div class="max-w-7xl mx-auto py-6 px-4">
+            <p class="text-center text-xs text-gray-400">
                 {{ __('ui.footer_text') }}
             </p>
         </div>

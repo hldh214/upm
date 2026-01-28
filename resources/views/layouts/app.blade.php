@@ -104,9 +104,10 @@
     <header class="sticky top-0 z-50 bg-white border-b border-gray-200" x-data="languageSwitcher()">
         <div class="max-w-7xl mx-auto">
             <div class="flex items-center justify-between h-14 px-4">
-                <!-- Logo -->
+                <!-- Logo & Tagline -->
                 <a href="{{ route('home') }}" class="flex items-center gap-2">
                     <span class="text-xl font-bold tracking-tight">UPM</span>
+                    <span class="hidden sm:inline-block text-xs text-gray-500 border-l border-gray-300 pl-2">{{ __('ui.tagline') }}</span>
                 </a>
                 
                 <!-- Right Side -->

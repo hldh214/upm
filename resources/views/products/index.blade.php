@@ -4,13 +4,6 @@
 
 @section('content')
 <div x-data="productList()" x-init="init()">
-    <!-- Promo Banner - Fixed message -->
-    <div class="bg-uq-red text-white">
-        <div class="max-w-7xl mx-auto px-4 py-2.5">
-            <p class="text-center text-xs font-medium tracking-wide">{{ __('ui.promo_banner') }}</p>
-        </div>
-    </div>
-
     <div class="max-w-7xl mx-auto px-4 py-4">
         <!-- Category Tabs - Minimal design -->
         <div class="border-b border-gray-200 mb-6">

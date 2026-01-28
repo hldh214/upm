@@ -4,30 +4,90 @@
 
 @section('content')
 <div x-data="productList()" x-init="init()">
+    <!-- Hero Section - Price Drop Highlight -->
+    <div class="bg-gradient-to-r from-red-500 to-orange-500 rounded-lg shadow-lg p-6 mb-6 text-white">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold mb-2">{{ __('ui.hero_title') }}</h1>
+                <p class="text-red-100">{{ __('ui.hero_subtitle') }}</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 backdrop-blur rounded-lg px-4 py-3 text-center">
+                    <p class="text-3xl font-bold" x-text="stats.dropped_count?.toLocaleString() || '—'"></p>
+                    <p class="text-xs text-red-100">{{ __('ui.price_drops_count') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Filter Tabs -->
+    <div class="bg-white rounded-lg shadow mb-4">
+        <div class="flex border-b">
+            <button
+                @click="setQuickFilter('dropped')"
+                :class="filters.priceDropped && !filters.priceRaised ? 'border-red-500 text-red-600 bg-red-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+                class="flex-1 md:flex-none px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2"
+            >
+                <span class="text-red-500">▼</span>
+                <span>{{ __('ui.tab_price_drops') }}</span>
+            </button>
+            <button
+                @click="setQuickFilter('raised')"
+                :class="filters.priceRaised && !filters.priceDropped ? 'border-green-500 text-green-600 bg-green-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+                class="flex-1 md:flex-none px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2"
+            >
+                <span class="text-green-500">▲</span>
+                <span>{{ __('ui.tab_price_rises') }}</span>
+            </button>
+            <button
+                @click="setQuickFilter('all')"
+                :class="!filters.priceDropped && !filters.priceRaised ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+                class="flex-1 md:flex-none px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center justify-center gap-2"
+            >
+                <span>{{ __('ui.tab_all_products') }}</span>
+            </button>
+        </div>
+        
+        <!-- Time Range Pills (show when price filter is active) -->
+        <div x-show="filters.priceDropped || filters.priceRaised" x-cloak class="p-3 bg-gray-50 border-b">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm text-gray-600">{{ __('ui.time_range') }}:</span>
+                <template x-for="day in [1, 3, 7, 14, 30]" :key="day">
+                    <button
+                        @click="filters.changeDays = day; search()"
+                        :class="filters.changeDays == day ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'"
+                        class="px-3 py-1 text-sm rounded-full border transition-colors"
+                        x-text="day + ' ' + (day === 1 ? '{{ __('ui.day') }}' : '{{ __('ui.days') }}')"
+                    ></button>
+                </template>
+            </div>
+        </div>
+    </div>
+
     <!-- Search and Filters -->
     <div class="bg-white rounded-lg shadow p-4 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Search Input -->
             <div class="lg:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('ui.search') }}</label>
                 <input
                     type="text"
                     x-model="filters.q"
                     @input.debounce.300ms="search()"
-                    placeholder="Search by product name or ID..."
+                    placeholder="{{ __('ui.search_placeholder') }}"
                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                 >
             </div>
             
             <!-- Brand Filter -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('ui.brand') }}</label>
                 <select
                     x-model="filters.brand"
                     @change="search()"
                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                 >
-                    <option value="">All Brands</option>
+                    <option value="">{{ __('ui.all_brands') }}</option>
                     <option value="uniqlo">UNIQLO</option>
                     <option value="gu">GU</option>
                 </select>
@@ -35,13 +95,13 @@
             
             <!-- Gender Filter -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('ui.gender') }}</label>
                 <select
                     x-model="filters.gender"
                     @change="search()"
                     class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
                 >
-                    <option value="">All</option>
+                    <option value="">{{ __('ui.all_genders') }}</option>
                     <option value="MEN">MEN</option>
                     <option value="WOMEN">WOMEN</option>
                     <option value="KIDS">KIDS</option>
@@ -51,70 +111,20 @@
             </div>
         </div>
         
-        <!-- Price Change Filter Row -->
-        <div class="mt-4 pt-4 border-t border-gray-200">
-            <div class="flex flex-wrap items-center gap-4">
-                <label class="text-sm font-medium text-gray-700">Price Changes:</label>
-                
-                <!-- Price Change Checkboxes -->
-                <div class="flex items-center gap-4">
-                    <label class="inline-flex items-center cursor-pointer">
-                        <input
-                            type="checkbox"
-                            x-model="filters.priceDropped"
-                            @change="search()"
-                            class="rounded border-gray-300 text-red-600 shadow-sm focus:border-red-500 focus:ring-red-500"
-                        >
-                        <span class="ml-2 text-sm text-gray-700 flex items-center gap-1">
-                            <span class="text-red-500">▼</span> Dropped
-                        </span>
-                    </label>
-                    
-                    <label class="inline-flex items-center cursor-pointer">
-                        <input
-                            type="checkbox"
-                            x-model="filters.priceRaised"
-                            @change="search()"
-                            class="rounded border-gray-300 text-green-600 shadow-sm focus:border-green-500 focus:ring-green-500"
-                        >
-                        <span class="ml-2 text-sm text-gray-700 flex items-center gap-1">
-                            <span class="text-green-500">▲</span> Raised
-                        </span>
-                    </label>
-                </div>
-                
-                <!-- Days Selector (only show when price change filter is active) -->
-                <div x-show="filters.priceDropped || filters.priceRaised" x-cloak class="flex items-center gap-2">
-                    <label class="text-sm text-gray-600">in last</label>
-                    <select
-                        x-model="filters.changeDays"
-                        @change="search()"
-                        class="text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-2 py-1 border"
-                    >
-                        <option value="1">1 day</option>
-                        <option value="3">3 days</option>
-                        <option value="7">7 days</option>
-                        <option value="14">14 days</option>
-                        <option value="30">30 days</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-        
         <!-- Sort -->
         <div class="mt-4 flex items-center gap-4">
-            <label class="text-sm font-medium text-gray-700">Sort by:</label>
+            <label class="text-sm font-medium text-gray-700">{{ __('ui.sort_by') }}:</label>
             <select
                 x-model="filters.sort"
                 @change="search()"
                 class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2 border"
             >
-                <option value="">Latest</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="drop_percent" x-show="filters.priceDropped || filters.priceRaised">Change %: High to Low</option>
-                <option value="name">Name</option>
-                <option value="updated">Recently Updated</option>
+                <option value="">{{ __('ui.sort_latest') }}</option>
+                <option value="price_asc">{{ __('ui.sort_price_low') }}</option>
+                <option value="price_desc">{{ __('ui.sort_price_high') }}</option>
+                <option value="drop_percent" x-show="filters.priceDropped || filters.priceRaised">{{ __('ui.sort_change_percent') }}</option>
+                <option value="name">{{ __('ui.sort_name') }}</option>
+                <option value="updated">{{ __('ui.sort_updated') }}</option>
             </select>
         </div>
     </div>
@@ -122,7 +132,7 @@
     <!-- Stats -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" x-show="stats.total_products > 0">
         <div class="bg-white rounded-lg shadow p-4">
-            <p class="text-sm text-gray-500">Total Products</p>
+            <p class="text-sm text-gray-500">{{ __('ui.total_products') }}</p>
             <p class="text-2xl font-bold" x-text="stats.total_products?.toLocaleString()"></p>
         </div>
         <div class="bg-white rounded-lg shadow p-4">
@@ -134,18 +144,18 @@
             <p class="text-2xl font-bold text-blue-600" x-text="stats.gu_count?.toLocaleString()"></p>
         </div>
         <div class="bg-white rounded-lg shadow p-4">
-            <p class="text-sm text-gray-500">Showing</p>
+            <p class="text-sm text-gray-500">{{ __('ui.showing') }}</p>
             <p class="text-2xl font-bold" x-text="products.length + ' / ' + pagination.total"></p>
         </div>
     </div>
 
-    <!-- All Products Header -->
-    <h2 class="text-xl font-bold text-gray-900 mb-4">All Products</h2>
+    <!-- Section Header -->
+    <h2 class="text-xl font-bold text-gray-900 mb-4" x-text="getSectionTitle()"></h2>
 
     <!-- Loading -->
     <div x-show="loading" class="text-center py-12">
         <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-        <p class="mt-2 text-gray-600">Loading...</p>
+        <p class="mt-2 text-gray-600">{{ __('ui.loading') }}</p>
     </div>
 
     <!-- Product Grid -->
@@ -219,9 +229,9 @@
                             </div>
                             
                             <div class="mt-2 text-xs text-gray-500">
-                                <span>Lowest: ¥<span x-text="product.lowest_price.toLocaleString()"></span></span>
+                                <span>{{ __('ui.lowest') }}: ¥<span x-text="product.lowest_price.toLocaleString()"></span></span>
                                 <span class="mx-1">|</span>
-                                <span>Highest: ¥<span x-text="product.highest_price.toLocaleString()"></span></span>
+                                <span>{{ __('ui.highest') }}: ¥<span x-text="product.highest_price.toLocaleString()"></span></span>
                             </div>
                         </div>
                     </template>
@@ -232,7 +242,7 @@
 
     <!-- Empty State -->
     <div x-show="!loading && products.length === 0" class="text-center py-12">
-        <p class="text-gray-500">No products found</p>
+        <p class="text-gray-500">{{ __('ui.no_products') }}</p>
     </div>
 
     <!-- Google-style Pagination -->
@@ -244,7 +254,7 @@
                 :disabled="pagination.current_page === 1"
                 class="px-3 py-2 text-sm text-blue-600 hover:bg-gray-100 rounded disabled:text-gray-400 disabled:cursor-not-allowed"
             >
-                &laquo; Prev
+                « {{ __('ui.prev') }}
             </button>
             
             <!-- Page Numbers -->
@@ -268,15 +278,15 @@
                 :disabled="pagination.current_page === pagination.last_page"
                 class="px-3 py-2 text-sm text-blue-600 hover:bg-gray-100 rounded disabled:text-gray-400 disabled:cursor-not-allowed"
             >
-                Next &raquo;
+                {{ __('ui.next') }} »
             </button>
         </nav>
     </div>
     
     <!-- Page Info -->
     <div x-show="pagination.last_page > 1" class="mt-2 text-center text-sm text-gray-500">
-        Page <span x-text="pagination.current_page"></span> of <span x-text="pagination.last_page"></span>
-        (<span x-text="pagination.total.toLocaleString()"></span> items)
+        {{ __('ui.page') }} <span x-text="pagination.current_page"></span> {{ __('ui.of') }} <span x-text="pagination.last_page"></span>
+        (<span x-text="pagination.total.toLocaleString()"></span> {{ __('ui.items') }})
     </div>
 </div>
 @endsection
@@ -295,9 +305,9 @@ function productList() {
             sort: '',
             page: 1,
             per_page: 20,
-            priceDropped: false,
+            priceDropped: true,  // Default to price drops
             priceRaised: false,
-            changeDays: 7
+            changeDays: 3  // Default to 3 days
         },
         pagination: {
             current_page: 1,
@@ -306,7 +316,7 @@ function productList() {
         },
 
         async init() {
-            // Parse URL parameters on load
+            // Parse URL parameters on load (may override defaults)
             this.parseUrlParams();
             
             await Promise.all([
@@ -320,23 +330,55 @@ function productList() {
                 this.fetchProducts();
             });
         },
+        
+        setQuickFilter(type) {
+            if (type === 'dropped') {
+                this.filters.priceDropped = true;
+                this.filters.priceRaised = false;
+            } else if (type === 'raised') {
+                this.filters.priceDropped = false;
+                this.filters.priceRaised = true;
+            } else {
+                this.filters.priceDropped = false;
+                this.filters.priceRaised = false;
+            }
+            this.search();
+        },
+        
+        getSectionTitle() {
+            if (this.filters.priceDropped && !this.filters.priceRaised) {
+                return window.translations.section_drops;
+            } else if (this.filters.priceRaised && !this.filters.priceDropped) {
+                return window.translations.section_rises;
+            }
+            return window.translations.section_all;
+        },
 
         parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
-            this.filters.page = parseInt(params.get('page')) || 1;
-            this.filters.q = params.get('q') || '';
-            this.filters.brand = params.get('brand') || '';
-            this.filters.gender = params.get('gender') || '';
-            this.filters.sort = params.get('sort') || '';
             
-            // Parse price change filters
-            const priceChange = params.get('price_change');
-            if (priceChange) {
-                const changes = priceChange.split(',');
-                this.filters.priceDropped = changes.includes('dropped');
-                this.filters.priceRaised = changes.includes('raised');
+            // Only override defaults if URL has parameters
+            if (params.toString()) {
+                this.filters.page = parseInt(params.get('page')) || 1;
+                this.filters.q = params.get('q') || '';
+                this.filters.brand = params.get('brand') || '';
+                this.filters.gender = params.get('gender') || '';
+                this.filters.sort = params.get('sort') || '';
+                
+                // Parse price change filters
+                const priceChange = params.get('price_change');
+                if (priceChange) {
+                    const changes = priceChange.split(',');
+                    this.filters.priceDropped = changes.includes('dropped');
+                    this.filters.priceRaised = changes.includes('raised');
+                } else {
+                    // If URL exists but no price_change, show all products
+                    this.filters.priceDropped = false;
+                    this.filters.priceRaised = false;
+                }
+                this.filters.changeDays = parseInt(params.get('change_days')) || 3;
             }
-            this.filters.changeDays = parseInt(params.get('change_days')) || 7;
+            // If no URL params, keep defaults (priceDropped: true, changeDays: 3)
         },
 
         updateUrl() {

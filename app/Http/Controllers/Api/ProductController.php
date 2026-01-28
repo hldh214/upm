@@ -186,10 +186,14 @@ class ProductController extends Controller
      */
     public function stats(): JsonResponse
     {
+        // Count products with price drops in last 3 days
+        $droppedCount = Product::priceChange('dropped', 3)->count();
+
         $stats = [
             'total_products' => Product::count(),
             'uniqlo_count' => Product::where('brand', 'uniqlo')->count(),
             'gu_count' => Product::where('brand', 'gu')->count(),
+            'dropped_count' => $droppedCount,
             'genders' => Product::select('gender')
                 ->distinct()
                 ->whereNotNull('gender')

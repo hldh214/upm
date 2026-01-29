@@ -163,9 +163,13 @@ class PageController extends Controller
                 'price' => $item->price,
             ]);
 
+        // Get watchlist count
+        $watchlistCount = $product->watchlists()->count();
+
         return Inertia::render('Products/Show', [
             'product' => $product,
             'history' => $history,
+            'watchlistCount' => $watchlistCount,
         ]);
     }
 }

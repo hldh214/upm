@@ -49,8 +49,8 @@ class PriceCrawlerService
 
                 Log::info("{$brandName} crawl completed", $brandResults);
             } catch (\Exception $e) {
-                $results['errors'][] = "{$brandName}: " . $e->getMessage();
-                Log::error("{$brandName} crawl failed: " . $e->getMessage());
+                $results['errors'][] = "{$brandName}: ".$e->getMessage();
+                Log::error("{$brandName} crawl failed: ".$e->getMessage());
             }
         }
 
@@ -73,7 +73,7 @@ class PriceCrawlerService
                 'offset' => $offset,
             ]);
 
-            if (!$response || !isset($response['result']['items'])) {
+            if (! $response || ! isset($response['result']['items'])) {
                 break;
             }
 
@@ -81,7 +81,7 @@ class PriceCrawlerService
             $items = array_merge($items, $pageItems);
             $total = $response['result']['pagination']['total'] ?? 0;
 
-            Log::debug("Fetched {$brand} products: " . count($items) . "/{$total}");
+            Log::debug("Fetched {$brand} products: ".count($items)."/{$total}");
 
             $offset += self::PAGINATION_LIMIT;
         } while ($offset < $total);
@@ -112,7 +112,7 @@ class PriceCrawlerService
 
                 Log::warning("HTTP request failed (attempt {$attempt}/{$maxRetries}): {$response->status()}");
             } catch (\Exception $e) {
-                Log::warning("HTTP request exception (attempt {$attempt}/{$maxRetries}): " . $e->getMessage());
+                Log::warning("HTTP request exception (attempt {$attempt}/{$maxRetries}): ".$e->getMessage());
             }
 
             if ($attempt < $maxRetries) {
@@ -130,13 +130,14 @@ class PriceCrawlerService
     {
         $created = 0;
         $updated = 0;
+        $notificationService = new NotificationService;
 
         foreach ($items as $item) {
             $productId = $item['productId'] ?? null;
             $priceGroup = $item['priceGroup'] ?? null;
             $price = $item['prices']['base']['value'] ?? null;
 
-            if (!$productId || !$priceGroup || $price === null) {
+            if (! $productId || ! $priceGroup || $price === null) {
                 continue;
             }
 
@@ -146,7 +147,8 @@ class PriceCrawlerService
                 'price_group' => $priceGroup,
             ]);
 
-            $isNew = !$product->exists;
+            $isNew = ! $product->exists;
+            $previousPrice = $product->current_price ?? 0;
 
             // Update product info
             $product->name = $item['name'] ?? '';
@@ -167,8 +169,14 @@ class PriceCrawlerService
 
             if ($isNew) {
                 $created++;
+                // Trigger new product notifications
+                $notificationService->checkNewProductNotifications($product);
             } else {
                 $updated++;
+                // Trigger price change notifications
+                if ($previousPrice > 0 && $previousPrice != $price) {
+                    $notificationService->checkPriceChangeNotifications($product, $previousPrice);
+                }
             }
 
             // Record price history only if price changed
@@ -176,11 +184,14 @@ class PriceCrawlerService
                 ->latest()
                 ->first();
 
-            if (!$lastHistory || $lastHistory->price != $price) {
+            if (! $lastHistory || $lastHistory->price != $price) {
                 PriceHistory::create([
                     'product_id' => $product->id,
                     'price' => $price,
                 ]);
+
+                // Check price drop notifications
+                $notificationService->checkPriceDropNotifications($product);
             }
         }
 
@@ -196,7 +207,7 @@ class PriceCrawlerService
      */
     private function extractImageUrl(array $images): ?string
     {
-        if (!isset($images['main'])) {
+        if (! isset($images['main'])) {
             return null;
         }
 

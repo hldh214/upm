@@ -38,6 +38,22 @@ class Product extends Model
     }
 
     /**
+     * Get the watchlists for this product.
+     */
+    public function watchlists(): HasMany
+    {
+        return $this->hasMany(Watchlist::class);
+    }
+
+    /**
+     * Get the count of users who have this product in their watchlist.
+     */
+    public function getWatchlistCountAttribute(): int
+    {
+        return $this->watchlists()->count();
+    }
+
+    /**
      * Get the product detail page URL.
      */
     public function getUrlAttribute(): string
@@ -46,7 +62,7 @@ class Product extends Model
             ? 'https://www.uniqlo.com/jp/ja/products/'
             : 'https://www.gu-global.com/jp/ja/products/';
 
-        return $baseUrl . $this->product_id . '/' . $this->price_group;
+        return $baseUrl.$this->product_id.'/'.$this->price_group;
     }
 
     /**
@@ -95,8 +111,8 @@ class Product extends Model
      * any record within the period indicates a price change.
      * We compare the record with its preceding record to determine direction.
      *
-     * @param array|string|null $priceChange 'dropped', 'raised', or ['dropped', 'raised']
-     * @param int $days Number of days to look back
+     * @param  array|string|null  $priceChange  'dropped', 'raised', or ['dropped', 'raised']
+     * @param  int  $days  Number of days to look back
      */
     public function scopePriceChange($query, $priceChange, int $days = 7)
     {

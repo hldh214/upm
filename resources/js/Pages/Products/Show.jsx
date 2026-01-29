@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
+import axios from 'axios';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -24,10 +26,57 @@ ChartJS.register(
     Filler
 );
 
-export default function Show({ product, history }) {
+export default function Show({ product, history, watchlistCount, auth }) {
     const { translations } = usePage().props;
     const t = translations;
-    
+    const [isInWatchlist, setIsInWatchlist] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [currentWatchlistCount, setCurrentWatchlistCount] = useState(watchlistCount || 0);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (auth.user) {
+            checkWatchlistStatus();
+        }
+    }, [auth.user, product.id]);
+
+    const checkWatchlistStatus = async () => {
+        try {
+            const response = await axios.get(`/api/watchlist/check/${product.id}`);
+            setIsInWatchlist(response.data.inWatchlist);
+        } catch (err) {
+            console.error('Error checking watchlist status:', err);
+        }
+    };
+
+    const toggleWatchlist = async () => {
+        if (!auth.user) {
+            window.location.href = '/login';
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            if (isInWatchlist) {
+                // Remove from watchlist
+                await axios.delete(`/api/watchlist/${product.id}`);
+                setIsInWatchlist(false);
+                setCurrentWatchlistCount(prev => Math.max(0, prev - 1));
+            } else {
+                // Add to watchlist
+                await axios.post('/api/watchlist', { product_id: product.id });
+                setIsInWatchlist(true);
+                setCurrentWatchlistCount(prev => prev + 1);
+            }
+            setError(null);
+        } catch (err) {
+            console.error('Error toggling watchlist:', err);
+            setError('Failed to update watchlist');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // Helper to preserve lang parameter
     const getUrlWithLang = (path) => {
         const currentLang = new URLSearchParams(window.location.search).get('lang');
@@ -241,7 +290,42 @@ export default function Show({ product, history }) {
                                     <dt className="w-32 text-gray-400">{t.price_group}</dt>
                                     <dd className="text-gray-900">{product.price_group}</dd>
                                 </div>
+                                <div className="flex">
+                                    <dt className="w-32 text-gray-400">お気に入り</dt>
+                                    <dd className="text-gray-900 font-medium">{currentWatchlistCount} users</dd>
+                                </div>
                             </dl>
+                        </div>
+
+                        {/* Error Message */}
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-100 text-red-700 text-sm rounded">
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="space-y-3 mb-8">
+                            <button
+                                onClick={toggleWatchlist}
+                                disabled={isLoading}
+                                className={`w-full px-6 py-4 text-sm font-medium transition-colors ${
+                                    isInWatchlist
+                                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                } disabled:opacity-50`}
+                            >
+                                {isLoading ? 'Processing...' : (isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist')}
+                            </button>
+
+                            {auth.user && (
+                                <Link
+                                    href="/mypage"
+                                    className="block text-center w-full px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-900 text-sm font-medium transition-colors"
+                                >
+                                    View My Watchlist
+                                </Link>
+                            )}
                         </div>
 
                         {/* CTA Button */}

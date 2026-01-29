@@ -45,7 +45,7 @@
         // Global helpers (for use in regular JS, e.g., Chart.js)
         window.formatDate = (iso, fmt = 'YYYY-MM-DD HH:mm:ss') => dayjs(iso).tz(userTz).format(fmt);
         window.formatDateRelative = (iso) => dayjs(iso).tz(userTz).fromNow();
-        
+
         // Global translations from Laravel
         window.translations = @json(__('ui'));
         window.currentLang = '{{ app()->getLocale() }}';
@@ -57,7 +57,7 @@
 
             // $dateRelative(isoString) - "3 hours ago", "2 days ago"
             Alpine.magic('dateRelative', () => (iso) => dayjs(iso).tz(userTz).fromNow());
-            
+
             // $t(key) - get translation
             Alpine.magic('t', () => (key) => window.translations[key] || key);
         });
@@ -66,18 +66,18 @@
 
     <style>
         [x-cloak] { display: none !important; }
-        
+
         /* UNIQLO-inspired clean styles */
         body {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
-        
+
         /* Smooth scrolling */
         html {
             scroll-behavior: smooth;
         }
-        
+
         /* Hide scrollbar but keep functionality */
         .hide-scrollbar::-webkit-scrollbar {
             display: none;
@@ -86,7 +86,7 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        
+
         /* Sale price animation */
         @keyframes pulse-sale {
             0%, 100% { opacity: 1; }
@@ -105,11 +105,11 @@
         <div class="max-w-7xl mx-auto">
             <div class="flex items-center justify-between h-14 px-4">
                 <!-- Logo & Tagline -->
-                <a href="{{ route('home') }}" class="flex items-center gap-2">
-                    <span class="text-xl font-bold tracking-tight">UPM</span>
-                    <span class="hidden sm:inline-block text-xs text-gray-500 border-l border-gray-300 pl-2">{{ __('ui.tagline') }}</span>
+                <a href="{{ route('home') }}" class="flex items-center gap-2 sm:gap-3">
+                    <span class="text-xl sm:text-2xl font-bold tracking-tight">UPM</span>
+                    <span class="text-xs sm:text-sm text-gray-500 border-l border-gray-300 pl-2 sm:pl-3">{{ __('ui.tagline') }}</span>
                 </a>
-                
+
                 <!-- Right Side -->
                 <div class="flex items-center gap-3">
                     <!-- Language Switcher -->
@@ -123,7 +123,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </button>
-                        
+
                         <!-- Dropdown -->
                         <div
                             x-show="open"
@@ -175,13 +175,13 @@
                 'en': 'English',
                 'ja': '日本語'
             },
-            
+
             setLanguage(lang) {
                 if (this.currentLang === lang) {
                     this.open = false;
                     return;
                 }
-                
+
                 // Set cookie and reload page to get new translations from server
                 document.cookie = `upm_language=${lang};path=/;max-age=${60*60*24*365}`;
                 localStorage.setItem('upm_language', lang);

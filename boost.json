@@ -1,0 +1,17 @@
+{
+    "agents": [
+        "junie",
+        "opencode"
+    ],
+    "guidelines": true,
+    "herd_mcp": false,
+    "mcp": true,
+    "packages": [
+        "laravel/fortify"
+    ],
+    "sail": false,
+    "skills": [
+        "tailwindcss-development",
+        "developing-with-fortify"
+    ]
+}

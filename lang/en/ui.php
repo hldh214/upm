@@ -79,4 +79,42 @@ return [
 
     // Footer
     'footer_text' => 'UPM - Price data is updated daily',
+
+    // Auth Pages
+    'login_title' => 'Sign In',
+    'login_subtitle' => 'Sign in to your account to continue',
+    'register_title' => 'Create Account',
+    'register_subtitle' => 'Sign up to get started',
+    'forgot_password_title' => 'Reset Password',
+    'forgot_password_subtitle' => "Enter your email address and we'll send you a link to reset your password.",
+    'reset_password_title' => 'Reset Password',
+    'reset_password_subtitle' => 'Create a new password for your account',
+
+    // Form Fields
+    'name' => 'Name',
+    'name_placeholder' => 'Your full name',
+    'email' => 'Email',
+    'email_placeholder' => 'name@example.com',
+    'password' => 'Password',
+    'password_placeholder' => 'Enter your password',
+    'new_password' => 'New Password',
+    'confirm_password' => 'Confirm Password',
+    'confirm_password_placeholder' => 'Confirm your password',
+    'remember_me' => 'Remember me',
+
+    // Auth Actions
+    'sign_in' => 'Sign In',
+    'sign_up' => 'Sign Up',
+    'signing_in' => 'Signing in...',
+    'signing_up' => 'Creating account...',
+    'sending' => 'Sending...',
+    'resetting' => 'Resetting...',
+    'send_reset_link' => 'Send Reset Link',
+    'reset_password_button' => 'Reset Password',
+    'forgot_password' => 'Forgot password?',
+    'back_to_login' => 'Back to sign in',
+
+    // Auth Messages
+    'no_account' => "Don't have an account?",
+    'have_account' => 'Already have an account?',
 ];

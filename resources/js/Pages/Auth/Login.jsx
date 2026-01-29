@@ -1,8 +1,9 @@
-import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
-import { Head, Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
+import AppLayout from '@/Layouts/AppLayout';
 
 export default function Login() {
+    const { translations } = usePage().props;
     const { data, setData, post, processing, errors } = useForm({
         email: '',
         password: '',
@@ -15,20 +16,22 @@ export default function Login() {
     };
 
     return (
-        <>
-            <Head title="Login" />
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-md w-full space-y-8">
-                    <div>
-                        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                            Sign in to your account
-                        </h2>
-                    </div>
-                    <form className="mt-8 space-y-6" onSubmit={submit}>
-                        <div className="rounded-md shadow-sm -space-y-px">
+        <AppLayout title={translations?.login_title || 'Login'}>
+            <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
+                <div className="max-w-md mx-auto">
+                    {/* Card Container */}
+                    <div className="border border-gray-200 bg-white">
+                        {/* Header */}
+                        <div className="border-b border-gray-200 px-6 py-5">
+                            <h1 className="text-xl font-bold text-gray-900">{translations?.login_title || 'Sign In'}</h1>
+                            <p className="text-xs text-gray-500 mt-1">{translations?.login_subtitle || 'Sign in to your account to continue'}</p>
+                        </div>
+
+                        {/* Form */}
+                        <form className="px-6 py-6 space-y-5" onSubmit={submit}>
                             <div>
-                                <label htmlFor="email" className="sr-only">
-                                    Email address
+                                <label htmlFor="email" className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                                    {translations?.email || 'Email'}
                                 </label>
                                 <input
                                     id="email"
@@ -36,18 +39,19 @@ export default function Login() {
                                     type="email"
                                     autoComplete="email"
                                     required
-                                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                                    placeholder="Email address"
+                                    className="w-full px-3 py-2.5 text-sm border border-gray-300 focus:border-black focus:ring-0 focus:outline-none transition-colors"
+                                    placeholder={translations?.email_placeholder || 'name@example.com'}
                                     value={data.email}
                                     onChange={(e) => setData('email', e.currentTarget.value)}
                                 />
                                 {errors.email && (
-                                    <div className="text-red-500 text-sm mt-1">{errors.email}</div>
+                                    <p className="text-xs text-red-600 mt-1.5">{errors.email}</p>
                                 )}
                             </div>
+
                             <div>
-                                <label htmlFor="password" className="sr-only">
-                                    Password
+                                <label htmlFor="password" className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
+                                    {translations?.password || 'Password'}
                                 </label>
                                 <input
                                     id="password"
@@ -55,61 +59,57 @@ export default function Login() {
                                     type="password"
                                     autoComplete="current-password"
                                     required
-                                    className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                                    placeholder="Password"
+                                    className="w-full px-3 py-2.5 text-sm border border-gray-300 focus:border-black focus:ring-0 focus:outline-none transition-colors"
+                                    placeholder={translations?.password_placeholder || 'Enter your password'}
                                     value={data.password}
                                     onChange={(e) => setData('password', e.currentTarget.value)}
                                 />
                                 {errors.password && (
-                                    <div className="text-red-500 text-sm mt-1">{errors.password}</div>
+                                    <p className="text-xs text-red-600 mt-1.5">{errors.password}</p>
                                 )}
                             </div>
-                        </div>
 
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                                <input
-                                    id="remember-me"
-                                    name="remember-me"
-                                    type="checkbox"
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                    checked={data.remember}
-                                    onChange={(e) => setData('remember', e.currentTarget.checked)}
-                                />
-                                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                                    Remember me
+                            <div className="flex items-center justify-between pt-1">
+                                <label className="flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        name="remember"
+                                        className="w-4 h-4 border border-gray-300 text-black focus:ring-0 focus:ring-offset-0"
+                                        checked={data.remember}
+                                        onChange={(e) => setData('remember', e.currentTarget.checked)}
+                                    />
+                                    <span className="ml-2 text-xs text-gray-600">{translations?.remember_me || 'Remember me'}</span>
                                 </label>
-                            </div>
 
-                            <div className="text-sm">
                                 <Link
                                     href="/forgot-password"
-                                    className="font-medium text-blue-600 hover:text-blue-500"
+                                    className="text-xs text-gray-600 hover:text-black transition-colors underline"
                                 >
-                                    Forgot your password?
+                                    {translations?.forgot_password || 'Forgot password?'}
                                 </Link>
                             </div>
-                        </div>
 
-                        <div>
                             <button
                                 type="submit"
                                 disabled={processing}
-                                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                                className="w-full py-3 px-4 text-sm font-medium text-white bg-black hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Sign in
+                                {processing ? (translations?.signing_in || 'Signing in...') : (translations?.sign_in || 'Sign In')}
                             </button>
-                        </div>
+                        </form>
 
-                        <div className="text-center">
-                            <span className="text-gray-600">Don't have an account? </span>
-                            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-                                Sign up
-                            </Link>
+                        {/* Footer */}
+                        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+                            <p className="text-center text-xs text-gray-600">
+                                {translations?.no_account || "Don't have an account?"}{' '}
+                                <Link href="/register" className="text-black font-medium hover:underline">
+                                    {translations?.sign_up || 'Sign up'}
+                                </Link>
+                            </p>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
-        </>
+        </AppLayout>
     );
 }

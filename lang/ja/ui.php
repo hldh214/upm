@@ -79,4 +79,42 @@ return [
 
     // Footer
     'footer_text' => 'UPM - 価格データは毎日更新されます',
+
+    // Auth Pages
+    'login_title' => 'ログイン',
+    'login_subtitle' => 'アカウントにログインして続行',
+    'register_title' => 'アカウント作成',
+    'register_subtitle' => '新規登録を始めましょう',
+    'forgot_password_title' => 'パスワードリセット',
+    'forgot_password_subtitle' => 'メールアドレスを入力すると、パスワードリセット用のリンクをお送りします。',
+    'reset_password_title' => 'パスワードリセット',
+    'reset_password_subtitle' => 'アカウントの新しいパスワードを作成',
+
+    // Form Fields
+    'name' => '名前',
+    'name_placeholder' => 'フルネームを入力',
+    'email' => 'メールアドレス',
+    'email_placeholder' => 'name@example.com',
+    'password' => 'パスワード',
+    'password_placeholder' => 'パスワードを入力',
+    'new_password' => '新しいパスワード',
+    'confirm_password' => 'パスワード確認',
+    'confirm_password_placeholder' => 'パスワードを再入力',
+    'remember_me' => 'ログイン状態を保持',
+
+    // Auth Actions
+    'sign_in' => 'ログイン',
+    'sign_up' => '登録',
+    'signing_in' => 'ログイン中...',
+    'signing_up' => 'アカウント作成中...',
+    'sending' => '送信中...',
+    'resetting' => 'リセット中...',
+    'send_reset_link' => 'リセットリンクを送信',
+    'reset_password_button' => 'パスワードをリセット',
+    'forgot_password' => 'パスワードを忘れた方',
+    'back_to_login' => 'ログインに戻る',
+
+    // Auth Messages
+    'no_account' => 'アカウントをお持ちでない方',
+    'have_account' => '既にアカウントをお持ちの方',
 ];

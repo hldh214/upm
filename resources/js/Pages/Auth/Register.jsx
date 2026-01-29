@@ -1,4 +1,4 @@
-import { FormEvent } from 'react';
+import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Head, Link } from '@inertiajs/react';
 
@@ -10,7 +10,7 @@ export default function Register() {
         password_confirmation: '',
     });
 
-    const submit = (e: FormEvent) => {
+    const submit = (e) => {
         e.preventDefault();
         post('/register');
     };

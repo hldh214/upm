@@ -32,7 +32,7 @@ export default function Show({ product, history, watchlistCount, auth }) {
     const [isInWatchlist, setIsInWatchlist] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [currentWatchlistCount, setCurrentWatchlistCount] = useState(watchlistCount || 0);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (auth.user) {

@@ -1,4 +1,4 @@
-import { FormEvent } from 'react';
+import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Head, Link } from '@inertiajs/react';
 
@@ -7,7 +7,7 @@ export default function ForgotPassword() {
         email: '',
     });
 
-    const submit = (e: FormEvent) => {
+    const submit = (e) => {
         e.preventDefault();
         post('/forgot-password');
     };

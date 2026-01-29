@@ -2,27 +2,10 @@ import { useEffect, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import axios from 'axios';
 
-interface Watchlist {
-    id: number;
-    user_id: number;
-    product_id: number;
-    created_at: string;
-    updated_at: string;
-    product: {
-        id: number;
-        name: string;
-        brand: string;
-        gender: string;
-        current_price: number;
-        image_url: string;
-    };
-    notificationSettings: any;
-}
-
-export default function MyPageIndex({ auth }: any) {
-    const [watchlists, setWatchlists] = useState<Watchlist[]>([]);
+export default function MyPageIndex({ auth }) {
+    const [watchlists, setWatchlists] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('watchlist');
     const { post } = useForm();
 
@@ -44,7 +27,7 @@ export default function MyPageIndex({ auth }: any) {
         }
     };
 
-    const handleRemoveFromWatchlist = async (productId: number) => {
+    const handleRemoveFromWatchlist = async (productId) => {
         try {
             await axios.delete(`/api/watchlist/${productId}`);
             setWatchlists(watchlists.filter(w => w.product_id !== productId));

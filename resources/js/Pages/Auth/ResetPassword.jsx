@@ -1,13 +1,8 @@
-import { FormEvent } from 'react';
+import { useState } from 'react';
 import { useForm } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 
-interface ResetPasswordProps {
-    email: string;
-    token: string;
-}
-
-export default function ResetPassword({ email, token }: ResetPasswordProps) {
+export default function ResetPassword({ email, token }) {
     const { data, setData, post, processing, errors } = useForm({
         token: token,
         email: email,
@@ -15,7 +10,7 @@ export default function ResetPassword({ email, token }: ResetPasswordProps) {
         password_confirmation: '',
     });
 
-    const submit = (e: FormEvent) => {
+    const submit = (e) => {
         e.preventDefault();
         post('/reset-password');
     };

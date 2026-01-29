@@ -23,7 +23,7 @@ export default function Index({ products: initialProducts, stats, filters: initi
         gender: initialFilters.gender || '',
         sort: initialFilters.sort || '',
         changeDays: parseInt(urlParams.get('change_days')) || parseInt(initialFilters.change_days) || 3,
-        priceDropped: priceChangeParam ? priceChangeParam.includes('dropped') : true,
+        priceDropped: priceChangeParam ? priceChangeParam.includes('dropped') : false,
         priceRaised: priceChangeParam ? priceChangeParam.includes('raised') : false,
     };
 

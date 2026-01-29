@@ -31,10 +31,10 @@ class SetLocale
      */
     protected function determineLocale(Request $request): string
     {
-        // 1. Check cookie (user's explicit choice)
-        $cookieLocale = $request->cookie('upm_language');
-        if ($cookieLocale && in_array($cookieLocale, $this->supportedLocales)) {
-            return $cookieLocale;
+        // 1. Check URL parameter (highest priority)
+        $urlLocale = $request->query('lang');
+        if ($urlLocale && in_array($urlLocale, $this->supportedLocales)) {
+            return $urlLocale;
         }
 
         // 2. Check Accept-Language header

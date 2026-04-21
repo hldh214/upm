@@ -139,8 +139,8 @@ class Product extends Model
         // Start from N days ago at 00:00:00
         $startDate = now()->subDays($days)->startOfDay();
 
-        // Find products that have a price change record within the period
-        // by comparing the record with its immediately preceding record
+        // Match the latest price change within the period so filtering and
+        // displayed price_change_type stay consistent.
         return $query->whereIn('id', function ($subquery) use ($startDate, $validChanges) {
             $subquery->select('ph_new.product_id')
                 ->from('price_histories as ph_new')
@@ -158,6 +158,13 @@ class Product extends Model
                         ->whereColumn('ph_between.product_id', 'ph_new.product_id')
                         ->whereColumn('ph_between.created_at', '>', 'ph_prev.created_at')
                         ->whereColumn('ph_between.created_at', '<', 'ph_new.created_at');
+                })
+                ->whereNotExists(function ($q) use ($startDate) {
+                    $q->select(DB::raw(1))
+                        ->from('price_histories as ph_later')
+                        ->whereColumn('ph_later.product_id', 'ph_new.product_id')
+                        ->whereColumn('ph_later.created_at', '>', 'ph_new.created_at')
+                        ->where('ph_later.created_at', '>=', $startDate);
                 })
                 // Check price change direction
                 ->where(function ($q) use ($validChanges) {

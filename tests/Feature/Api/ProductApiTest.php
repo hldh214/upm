@@ -145,6 +145,46 @@ class ProductApiTest extends TestCase
             ->assertJsonCount(10, 'data');
     }
 
+    public function test_index_price_change_filter_uses_latest_change_within_period(): void
+    {
+        $matchingProduct = Product::factory()->uniqlo()->gender('UNISEX')->create();
+        $mixedDirectionProduct = Product::factory()->uniqlo()->gender('UNISEX')->create();
+
+        $this->travel(-20)->days();
+        PriceHistory::create([
+            'product_id' => $matchingProduct->id,
+            'price' => 1990,
+        ]);
+        PriceHistory::create([
+            'product_id' => $mixedDirectionProduct->id,
+            'price' => 2990,
+        ]);
+
+        $this->travel(10)->days();
+        PriceHistory::create([
+            'product_id' => $matchingProduct->id,
+            'price' => 1490,
+        ]);
+        PriceHistory::create([
+            'product_id' => $mixedDirectionProduct->id,
+            'price' => 2490,
+        ]);
+
+        $this->travel(9)->days();
+        PriceHistory::create([
+            'product_id' => $mixedDirectionProduct->id,
+            'price' => 2690,
+        ]);
+        $this->travelBack();
+
+        $response = $this->getJson('/api/products?brand=uniqlo&gender=UNISEX&price_change=dropped&change_days=14');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $matchingProduct->id)
+            ->assertJsonPath('data.0.price_change_type', 'dropped');
+    }
+
     public function test_show_returns_product_with_price_histories(): void
     {
         $product = Product::factory()->create();

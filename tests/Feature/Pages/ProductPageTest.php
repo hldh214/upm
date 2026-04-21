@@ -2,9 +2,10 @@
 
 namespace Tests\Feature\Pages;
 
-use App\Models\Product;
 use App\Models\PriceHistory;
+use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ProductPageTest extends TestCase
@@ -16,7 +17,13 @@ class ProductPageTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200)
-            ->assertViewIs('products.index');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Index')
+                ->has('products')
+                ->has('stats')
+                ->where('availableGenders', Product::AVAILABLE_GENDERS)
+                ->has('filters')
+            );
     }
 
     public function test_index_page_contains_required_elements(): void
@@ -24,10 +31,25 @@ class ProductPageTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200)
-            ->assertSee('UPM')
-            ->assertSee('Search')
-            ->assertSee('Brand')
-            ->assertSee('Gender');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Index')
+                ->where('translations.search', __('ui.search'))
+                ->where('translations.brand', __('ui.brand'))
+                ->where('translations.gender', __('ui.gender'))
+                ->where('translations.tagline', __('ui.tagline'))
+            );
+    }
+
+    public function test_index_page_includes_unisex_gender_filter_option(): void
+    {
+        $response = $this->get('/');
+
+        $response->assertStatus(200)
+            ->assertSee('UNISEX')
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Index')
+                ->where('availableGenders', Product::AVAILABLE_GENDERS)
+            );
     }
 
     public function test_show_page_loads_successfully(): void
@@ -37,8 +59,15 @@ class ProductPageTest extends TestCase
         $response = $this->get("/products/{$product->id}");
 
         $response->assertStatus(200)
-            ->assertViewIs('products.show')
-            ->assertViewHas('product');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->has('product', fn (Assert $productPage) => $productPage
+                    ->where('id', $product->id)
+                    ->etc()
+                )
+                ->has('history')
+                ->has('watchlistCount')
+            );
     }
 
     public function test_show_page_displays_product_information(): void
@@ -54,11 +83,17 @@ class ProductPageTest extends TestCase
         $response = $this->get("/products/{$product->id}");
 
         $response->assertStatus(200)
-            ->assertSee('Test Product Name')
-            ->assertSee('UNIQLO')
-            ->assertSee('1,990')
-            ->assertSee('990')
-            ->assertSee('2,990');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->has('product', fn (Assert $productPage) => $productPage
+                    ->where('name', 'Test Product Name')
+                    ->where('brand', 'uniqlo')
+                    ->where('current_price', 1990)
+                    ->where('lowest_price', 990)
+                    ->where('highest_price', 2990)
+                    ->etc()
+                )
+            );
     }
 
     public function test_show_page_displays_lowest_price_indicator(): void
@@ -72,7 +107,12 @@ class ProductPageTest extends TestCase
         $response = $this->get("/products/{$product->id}");
 
         $response->assertStatus(200)
-            ->assertSee('Now at the lowest price!');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->where('product.current_price', 990)
+                ->where('product.lowest_price', 990)
+                ->where('translations.lowest_now', __('ui.lowest_now'))
+            );
     }
 
     public function test_show_page_has_link_to_official_site(): void
@@ -85,8 +125,16 @@ class ProductPageTest extends TestCase
         $response = $this->get("/products/{$product->id}");
 
         $response->assertStatus(200)
-            ->assertSee('View on Official Site')
-            ->assertSee('https://www.uniqlo.com/jp/ja/products/E123456/000');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->where('translations.view_official', __('ui.view_official'))
+                ->has('product', fn (Assert $productPage) => $productPage
+                    ->where('brand', 'uniqlo')
+                    ->where('product_id', 'E123456')
+                    ->where('price_group', '000')
+                    ->etc()
+                )
+            );
     }
 
     public function test_show_page_has_back_to_list_link(): void
@@ -96,7 +144,10 @@ class ProductPageTest extends TestCase
         $response = $this->get("/products/{$product->id}");
 
         $response->assertStatus(200)
-            ->assertSee('Back to list');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->where('translations.back_to_list', __('ui.back_to_list'))
+            );
     }
 
     public function test_show_page_returns_404_for_non_existent_product(): void
@@ -116,11 +167,13 @@ class ProductPageTest extends TestCase
 
         $response = $this->get("/products/{$product->id}");
 
-        $response->assertStatus(200);
-
-        $viewProduct = $response->viewData('product');
-        $this->assertTrue($viewProduct->relationLoaded('priceHistories'));
-        $this->assertCount(10, $viewProduct->priceHistories);
+        $response->assertStatus(200)
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->where('product.id', $product->id)
+                ->has('product.price_histories', 10)
+                ->has('history', 10)
+            );
     }
 
     public function test_show_page_displays_product_id_and_price_group(): void
@@ -133,8 +186,11 @@ class ProductPageTest extends TestCase
         $response = $this->get("/products/{$product->id}");
 
         $response->assertStatus(200)
-            ->assertSee('E123456')
-            ->assertSee('001');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->where('product.product_id', 'E123456')
+                ->where('product.price_group', '001')
+            );
     }
 
     public function test_show_page_displays_gender_badge(): void
@@ -146,7 +202,10 @@ class ProductPageTest extends TestCase
         $response = $this->get("/products/{$product->id}");
 
         $response->assertStatus(200)
-            ->assertSee('WOMEN');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->where('product.gender', 'WOMEN')
+            );
     }
 
     public function test_index_page_has_correct_route_name(): void

@@ -11,6 +11,14 @@ class Product extends Model
 {
     use HasFactory;
 
+    public const AVAILABLE_GENDERS = [
+        'MEN',
+        'WOMEN',
+        'KIDS',
+        'BABY',
+        'UNISEX',
+    ];
+
     protected $fillable = [
         'product_id',
         'price_group',

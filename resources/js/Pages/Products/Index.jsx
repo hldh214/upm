@@ -1,7 +1,7 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 
-export default function Index({ products: initialProducts, stats, filters: initialFilters }) {
+export default function Index({ products: initialProducts, stats, availableGenders, filters: initialFilters }) {
     const { translations } = usePage().props;
     const t = translations;
 
@@ -273,10 +273,9 @@ export default function Index({ products: initialProducts, stats, filters: initi
                             className="px-3 py-2.5 text-sm border border-gray-300 focus:border-black focus:ring-0 focus:outline-none bg-white min-w-[100px]"
                         >
                             <option value="">{t.all_genders}</option>
-                            <option value="MEN">MEN</option>
-                            <option value="WOMEN">WOMEN</option>
-                            <option value="KIDS">KIDS</option>
-                            <option value="BABY">BABY</option>
+                            {availableGenders.map((gender) => (
+                                <option key={gender} value={gender}>{gender}</option>
+                            ))}
                         </select>
 
                         <select

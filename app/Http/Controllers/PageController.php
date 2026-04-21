@@ -73,6 +73,7 @@ class PageController extends Controller
         return Inertia::render('Products/Index', [
             'products' => $products,
             'stats' => $stats,
+            'availableGenders' => Product::AVAILABLE_GENDERS,
             'filters' => [
                 'q' => $request->input('q', ''),
                 'brand' => $request->input('brand', ''),

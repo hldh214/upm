@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class NotificationSetting extends Model
 {
@@ -24,12 +25,12 @@ class NotificationSetting extends Model
         'price_change_min_amount' => 'integer',
     ];
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function watchlist()
+    public function watchlist(): BelongsTo
     {
         return $this->belongsTo(Watchlist::class);
     }

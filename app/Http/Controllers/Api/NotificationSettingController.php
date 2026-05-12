@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\NotificationSetting;
 use App\Models\NewProductNotificationSetting;
-use Illuminate\Http\Request;
+use App\Models\NotificationSetting;
+use App\Models\Product;
+use App\Models\Watchlist;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class NotificationSettingController extends Controller
 {
@@ -17,19 +21,21 @@ class NotificationSettingController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
+
+        $watchlist = Watchlist::where('user_id', $user->id)->findOrFail($watchlistId);
 
         $settings = NotificationSetting::where('user_id', $user->id)
             ->where('watchlist_id', $watchlistId)
             ->first();
 
-        if (!$settings) {
+        if (! $settings) {
             // Create default settings if not exists
             $settings = NotificationSetting::create([
                 'user_id' => $user->id,
-                'watchlist_id' => $watchlistId,
+                'watchlist_id' => $watchlist->id,
             ]);
         }
 
@@ -43,26 +49,27 @@ class NotificationSettingController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
+
+        $watchlist = Watchlist::where('user_id', $user->id)->findOrFail($watchlistId);
 
         $validated = $request->validate([
             'price_drop_enabled' => 'boolean',
             'price_drop_target' => 'nullable|integer|min:0',
             'price_change_enabled' => 'boolean',
             'price_change_min_amount' => 'nullable|integer|min:0',
-            'new_product_enabled' => 'boolean',
         ]);
 
         $settings = NotificationSetting::where('user_id', $user->id)
             ->where('watchlist_id', $watchlistId)
             ->first();
 
-        if (!$settings) {
+        if (! $settings) {
             $settings = new NotificationSetting([
                 'user_id' => $user->id,
-                'watchlist_id' => $watchlistId,
+                'watchlist_id' => $watchlist->id,
             ]);
         }
 
@@ -78,13 +85,21 @@ class NotificationSettingController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
         $settings = NewProductNotificationSetting::where('user_id', $user->id)->get();
 
-        return response()->json($settings);
+        return response()->json([
+            'settings' => $settings,
+            'brands' => ['uniqlo', 'gu'],
+            'genders' => Product::AVAILABLE_GENDERS,
+            'global' => $settings
+                ->where('brand', '*')
+                ->where('gender', '*')
+                ->first(),
+        ]);
     }
 
     /**
@@ -94,22 +109,28 @@ class NotificationSettingController extends Controller
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
         $validated = $request->validate([
-            'brand' => 'required|string',
-            'gender' => 'required|string',
+            'brand' => ['required', 'string', Rule::in(['*', 'uniqlo', 'gu'])],
+            'gender' => ['required', 'string', Rule::in(['*', ...Product::AVAILABLE_GENDERS])],
             'enabled' => 'required|boolean',
         ]);
+
+        if (($validated['brand'] === '*') !== ($validated['gender'] === '*')) {
+            throw ValidationException::withMessages([
+                'brand' => 'The global switch must use * for both brand and gender.',
+            ]);
+        }
 
         $settings = NewProductNotificationSetting::where('user_id', $user->id)
             ->where('brand', $validated['brand'])
             ->where('gender', $validated['gender'])
             ->first();
 
-        if (!$settings) {
+        if (! $settings) {
             $settings = NewProductNotificationSetting::create([
                 'user_id' => $user->id,
                 'brand' => $validated['brand'],

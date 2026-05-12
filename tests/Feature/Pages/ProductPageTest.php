@@ -4,6 +4,8 @@ namespace Tests\Feature\Pages;
 
 use App\Models\PriceHistory;
 use App\Models\Product;
+use App\Models\User;
+use App\Models\Watchlist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -110,6 +112,27 @@ class ProductPageTest extends TestCase
                 )
                 ->has('history')
                 ->has('watchlistCount')
+            );
+    }
+
+    public function test_show_page_includes_watchlist_count(): void
+    {
+        $product = Product::factory()->create();
+        $users = User::factory()->count(3)->create();
+
+        foreach ($users as $user) {
+            Watchlist::create([
+                'user_id' => $user->id,
+                'product_id' => $product->id,
+            ]);
+        }
+
+        $response = $this->get("/products/{$product->id}");
+
+        $response->assertStatus(200)
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Products/Show')
+                ->where('watchlistCount', 3)
             );
     }
 

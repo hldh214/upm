@@ -5,7 +5,6 @@ import AppLayout from '@/Layouts/AppLayout';
 export default function Register() {
     const { translations } = usePage().props;
     const { data, setData, post, processing, errors } = useForm({
-        name: '',
         email: '',
         password: '',
         password_confirmation: '',
@@ -30,26 +29,6 @@ export default function Register() {
 
                         {/* Form */}
                         <form className="px-6 py-6 space-y-5" onSubmit={submit}>
-                            <div>
-                                <label htmlFor="name" className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
-                                    {translations?.name || 'Name'}
-                                </label>
-                                <input
-                                    id="name"
-                                    name="name"
-                                    type="text"
-                                    autoComplete="name"
-                                    required
-                                    className="w-full px-3 py-2.5 text-sm border border-gray-300 focus:border-black focus:ring-0 focus:outline-none transition-colors"
-                                    placeholder={translations?.name_placeholder || 'Your full name'}
-                                    value={data.name}
-                                    onChange={(e) => setData('name', e.currentTarget.value)}
-                                />
-                                {errors.name && (
-                                    <p className="text-xs text-red-600 mt-1.5">{errors.name}</p>
-                                )}
-                            </div>
-
                             <div>
                                 <label htmlFor="email" className="block text-xs font-medium text-gray-700 mb-2 uppercase tracking-wide">
                                     {translations?.email || 'Email'}

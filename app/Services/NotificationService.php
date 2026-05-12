@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Models\Watchlist;
+use App\Models\NewProductNotificationSetting;
 use App\Models\NotificationSetting;
 use App\Models\PriceNotification;
-use App\Models\NewProductNotificationSetting;
 use App\Models\Product;
 use App\Models\User;
+use App\Notifications\PriceAlertNotification;
 
 class NotificationService
 {
@@ -16,13 +16,12 @@ class NotificationService
      */
     public function checkPriceDropNotifications(Product $product): void
     {
-        // Get all notification settings for this product with price_drop_enabled
-        $settings = NotificationSetting::where('watchlist_id', function ($query) use ($product) {
-            $query->select('id')
-                ->from('watchlists')
-                ->where('product_id', $product->id);
-        })
+        $settings = NotificationSetting::query()
+            ->whereHas('watchlist', function ($query) use ($product) {
+                $query->where('product_id', $product->id);
+            })
             ->where('price_drop_enabled', true)
+            ->with('user')
             ->get();
 
         foreach ($settings as $setting) {
@@ -35,12 +34,12 @@ class NotificationService
      */
     public function checkPriceChangeNotifications(Product $product, int $previousPrice): void
     {
-        $settings = NotificationSetting::where('watchlist_id', function ($query) use ($product) {
-            $query->select('id')
-                ->from('watchlists')
-                ->where('product_id', $product->id);
-        })
+        $settings = NotificationSetting::query()
+            ->whereHas('watchlist', function ($query) use ($product) {
+                $query->where('product_id', $product->id);
+            })
             ->where('price_change_enabled', true)
+            ->with('user')
             ->get();
 
         foreach ($settings as $setting) {
@@ -53,9 +52,19 @@ class NotificationService
      */
     public function checkNewProductNotifications(Product $product): void
     {
-        $settings = NewProductNotificationSetting::where('brand', $product->brand)
+        $settings = NewProductNotificationSetting::query()
+            ->where('brand', $product->brand)
             ->where('gender', $product->gender)
             ->where('enabled', true)
+            ->whereExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('new_product_notification_settings as global_settings')
+                    ->whereColumn('global_settings.user_id', 'new_product_notification_settings.user_id')
+                    ->where('global_settings.brand', '*')
+                    ->where('global_settings.gender', '*')
+                    ->where('global_settings.enabled', true);
+            })
+            ->with('user')
             ->get();
 
         foreach ($settings as $setting) {
@@ -68,7 +77,7 @@ class NotificationService
      */
     private function processPriceDropNotification(Product $product, NotificationSetting $setting): void
     {
-        if (!$setting->price_drop_target) {
+        if (! $setting->price_drop_target) {
             return;
         }
 
@@ -80,7 +89,7 @@ class NotificationService
                 ->where('notification_type', 'price_drop')
                 ->exists();
 
-            if (!$alreadySent) {
+            if (! $alreadySent) {
                 // Create notification record
                 PriceNotification::create([
                     'user_id' => $setting->user_id,
@@ -89,7 +98,7 @@ class NotificationService
                     'price_at_notification' => $product->current_price,
                 ]);
 
-                // TODO: Send actual notification (email, push, etc.)
+                $setting->user?->notify(new PriceAlertNotification($product, 'price_drop'));
             }
         }
     }
@@ -99,7 +108,7 @@ class NotificationService
      */
     private function processPriceChangeNotification(Product $product, int $previousPrice, NotificationSetting $setting): void
     {
-        if (!$setting->price_change_min_amount) {
+        if (! $setting->price_change_min_amount) {
             return;
         }
 
@@ -114,7 +123,7 @@ class NotificationService
                 'price_at_notification' => $product->current_price,
             ]);
 
-            // TODO: Send actual notification (email, push, etc.)
+            $setting->user?->notify(new PriceAlertNotification($product, 'price_change'));
         }
     }
 
@@ -129,7 +138,7 @@ class NotificationService
             ->where('notification_type', 'new_product')
             ->exists();
 
-        if (!$alreadySent) {
+        if (! $alreadySent) {
             // Create notification record
             PriceNotification::create([
                 'user_id' => $setting->user_id,
@@ -138,7 +147,7 @@ class NotificationService
                 'price_at_notification' => $product->current_price,
             ]);
 
-            // TODO: Send actual notification (email, push, etc.)
+            $setting->user?->notify(new PriceAlertNotification($product, 'new_product'));
         }
     }
 
@@ -147,7 +156,8 @@ class NotificationService
      */
     public function getUserNotifications(User $user, int $limit = 20)
     {
-        return PriceNotification::where('user_id', $user->id)
+        return PriceNotification::query()
+            ->where('user_id', $user->id)
             ->with('product')
             ->latest()
             ->limit($limit)

@@ -103,6 +103,8 @@ return [
     'remember_me' => 'ログイン状態を保持',
 
     // Auth Actions
+    'my_page' => 'マイページ',
+    'logout' => 'ログアウト',
     'sign_in' => 'ログイン',
     'sign_up' => '登録',
     'signing_in' => 'ログイン中...',

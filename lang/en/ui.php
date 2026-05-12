@@ -103,6 +103,8 @@ return [
     'remember_me' => 'Remember me',
 
     // Auth Actions
+    'my_page' => 'My Page',
+    'logout' => 'Logout',
     'sign_in' => 'Sign In',
     'sign_up' => 'Sign Up',
     'signing_in' => 'Signing in...',

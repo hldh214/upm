@@ -118,6 +118,56 @@ class PriceCrawlerServiceTest extends TestCase
         $this->assertEquals(2990, $product->highest_price); // Unchanged
     }
 
+    public function test_crawl_skips_unchanged_existing_products(): void
+    {
+        $updatedAt = now()->subDay();
+        $product = Product::factory()->create([
+            'product_id' => 'E123456',
+            'price_group' => '000',
+            'brand' => 'uniqlo',
+            'name' => 'Same Product',
+            'gender' => 'MEN',
+            'image_url' => 'https://example.com/image.jpg',
+            'current_price' => 1990,
+            'lowest_price' => 1990,
+            'highest_price' => 3990,
+            'created_at' => $updatedAt,
+            'updated_at' => $updatedAt,
+        ]);
+        PriceHistory::create([
+            'product_id' => $product->id,
+            'price' => 1990,
+        ]);
+        $originalUpdatedAt = $product->refresh()->updated_at->copy();
+
+        Http::fake([
+            'www.uniqlo.com/*' => Http::response([
+                'result' => [
+                    'items' => [
+                        [
+                            'productId' => 'E123456',
+                            'priceGroup' => '000',
+                            'name' => 'Same Product',
+                            'prices' => ['base' => ['value' => 1990]],
+                            'genderCategory' => 'MEN',
+                            'images' => ['main' => 'https://example.com/image.jpg'],
+                        ],
+                    ],
+                    'pagination' => ['total' => 1],
+                ],
+            ], 200),
+        ]);
+
+        $results = $this->crawler->crawl('uniqlo');
+
+        $this->assertEquals(1, $results['total']);
+        $this->assertEquals(0, $results['created']);
+        $this->assertEquals(0, $results['updated']);
+        $this->assertEquals(1, $results['unchanged']);
+        $this->assertTrue($originalUpdatedAt->equalTo($product->refresh()->updated_at));
+        $this->assertDatabaseCount('price_histories', 1);
+    }
+
     public function test_crawl_records_price_history(): void
     {
         Http::fake([

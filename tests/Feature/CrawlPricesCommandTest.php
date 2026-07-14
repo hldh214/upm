@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\PriceHistory;
+use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -117,6 +119,55 @@ class CrawlPricesCommandTest extends TestCase
                     ['Total Products', 2],
                     ['New Products', 2],
                     ['Updated Products', 0],
+                    ['Unchanged Products', 0],
+                ]
+            )
+            ->assertExitCode(0);
+    }
+
+    public function test_command_displays_unchanged_products_count(): void
+    {
+        $product = Product::factory()->uniqlo()->create([
+            'product_id' => 'E123456',
+            'price_group' => '000',
+            'name' => 'Same Product',
+            'gender' => 'MEN',
+            'image_url' => null,
+            'current_price' => 1990,
+            'lowest_price' => 1990,
+            'highest_price' => 3990,
+        ]);
+        PriceHistory::create([
+            'product_id' => $product->id,
+            'price' => 1990,
+        ]);
+
+        Http::fake([
+            'www.uniqlo.com/*' => Http::response([
+                'result' => [
+                    'items' => [
+                        [
+                            'productId' => 'E123456',
+                            'priceGroup' => '000',
+                            'name' => 'Same Product',
+                            'prices' => ['base' => ['value' => 1990]],
+                            'genderCategory' => 'MEN',
+                            'images' => ['main' => null],
+                        ],
+                    ],
+                    'pagination' => ['total' => 1],
+                ],
+            ], 200),
+        ]);
+
+        $this->artisan('upm:crawl --brand=uniqlo')
+            ->expectsTable(
+                ['Metric', 'Count'],
+                [
+                    ['Total Products', 1],
+                    ['New Products', 0],
+                    ['Updated Products', 0],
+                    ['Unchanged Products', 1],
                 ]
             )
             ->assertExitCode(0);

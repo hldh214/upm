@@ -28,8 +28,9 @@ class CrawlPrices extends Command
     {
         $brand = $this->option('brand');
 
-        if ($brand && !in_array($brand, ['uniqlo', 'gu'])) {
+        if ($brand && ! in_array($brand, ['uniqlo', 'gu'])) {
             $this->error('Invalid brand parameter. Please use uniqlo or gu.');
+
             return Command::FAILURE;
         }
 
@@ -45,15 +46,17 @@ class CrawlPrices extends Command
                 ['Total Products', $results['total']],
                 ['New Products', $results['created']],
                 ['Updated Products', $results['updated']],
+                ['Unchanged Products', $results['unchanged']],
             ]
         );
 
-        if (!empty($results['errors'])) {
+        if (! empty($results['errors'])) {
             $this->newLine();
             $this->warn('Errors:');
             foreach ($results['errors'] as $error) {
                 $this->error($error);
             }
+
             return Command::FAILURE;
         }
 

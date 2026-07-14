@@ -31,6 +31,7 @@ class PriceCrawlerService
             'total' => 0,
             'created' => 0,
             'updated' => 0,
+            'unchanged' => 0,
             'errors' => [],
         ];
 
@@ -46,6 +47,7 @@ class PriceCrawlerService
                 $results['total'] += $brandResults['total'];
                 $results['created'] += $brandResults['created'];
                 $results['updated'] += $brandResults['updated'];
+                $results['unchanged'] += $brandResults['unchanged'];
 
                 Log::info("{$brandName} crawl completed", $brandResults);
             } catch (\Exception $e) {
@@ -130,6 +132,7 @@ class PriceCrawlerService
     {
         $created = 0;
         $updated = 0;
+        $unchanged = 0;
         $notificationService = new NotificationService;
 
         foreach ($items as $item) {
@@ -165,18 +168,20 @@ class PriceCrawlerService
                 $product->highest_price = $price;
             }
 
-            $product->save();
-
             if ($isNew) {
+                $product->save();
                 $created++;
                 // Trigger new product notifications
                 $notificationService->checkNewProductNotifications($product);
-            } else {
+            } elseif ($product->isDirty()) {
+                $product->save();
                 $updated++;
                 // Trigger price change notifications
                 if ($previousPrice > 0 && $previousPrice != $price) {
                     $notificationService->checkPriceChangeNotifications($product, $previousPrice);
                 }
+            } else {
+                $unchanged++;
             }
 
             // Record price history only if price changed
@@ -199,6 +204,7 @@ class PriceCrawlerService
             'total' => count($items),
             'created' => $created,
             'updated' => $updated,
+            'unchanged' => $unchanged,
         ];
     }
 

@@ -2,11 +2,17 @@
 
 namespace Tests\Unit\Services;
 
-use App\Models\Product;
+use App\Models\NewProductNotificationSetting;
+use App\Models\NotificationSetting;
 use App\Models\PriceHistory;
+use App\Models\Product;
+use App\Models\User;
+use App\Models\Watchlist;
+use App\Notifications\PriceAlertNotification;
 use App\Services\PriceCrawlerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class PriceCrawlerServiceTest extends TestCase
@@ -18,7 +24,7 @@ class PriceCrawlerServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->crawler = new PriceCrawlerService();
+        $this->crawler = new PriceCrawlerService;
     }
 
     public function test_crawl_creates_new_products(): void
@@ -144,6 +150,158 @@ class PriceCrawlerServiceTest extends TestCase
         $this->assertDatabaseHas('price_histories', [
             'price' => 1990,
         ]);
+    }
+
+    public function test_crawl_sends_new_product_notification_when_settings_match(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+        NewProductNotificationSetting::create([
+            'user_id' => $user->id,
+            'brand' => '*',
+            'gender' => '*',
+            'enabled' => true,
+        ]);
+        NewProductNotificationSetting::create([
+            'user_id' => $user->id,
+            'brand' => 'uniqlo',
+            'gender' => 'MEN',
+            'enabled' => true,
+        ]);
+
+        Http::fake([
+            'www.uniqlo.com/*' => Http::response([
+                'result' => [
+                    'items' => [
+                        [
+                            'productId' => 'E123456',
+                            'priceGroup' => '000',
+                            'name' => 'New Product',
+                            'prices' => ['base' => ['value' => 1990]],
+                            'genderCategory' => 'MEN',
+                            'images' => ['main' => null],
+                        ],
+                    ],
+                    'pagination' => ['total' => 1],
+                ],
+            ], 200),
+        ]);
+
+        $this->crawler->crawl('uniqlo');
+
+        $product = Product::where('product_id', 'E123456')->firstOrFail();
+        $this->assertDatabaseHas('price_notifications', [
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'notification_type' => 'new_product',
+            'price_at_notification' => 1990,
+        ]);
+        Notification::assertSentTo($user, PriceAlertNotification::class);
+    }
+
+    public function test_crawl_sends_price_drop_notification_when_updated_price_reaches_target(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+        $product = Product::factory()->uniqlo()->create([
+            'product_id' => 'E123456',
+            'price_group' => '000',
+            'current_price' => 2990,
+            'lowest_price' => 2990,
+            'highest_price' => 2990,
+        ]);
+        $watchlist = Watchlist::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+        ]);
+        NotificationSetting::create([
+            'user_id' => $user->id,
+            'watchlist_id' => $watchlist->id,
+            'price_drop_enabled' => true,
+            'price_drop_target' => 2000,
+        ]);
+
+        Http::fake([
+            'www.uniqlo.com/*' => Http::response([
+                'result' => [
+                    'items' => [
+                        [
+                            'productId' => 'E123456',
+                            'priceGroup' => '000',
+                            'name' => 'Discounted Product',
+                            'prices' => ['base' => ['value' => 1990]],
+                            'genderCategory' => 'MEN',
+                            'images' => ['main' => null],
+                        ],
+                    ],
+                    'pagination' => ['total' => 1],
+                ],
+            ], 200),
+        ]);
+
+        $this->crawler->crawl('uniqlo');
+
+        $this->assertDatabaseHas('price_notifications', [
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'notification_type' => 'price_drop',
+            'price_at_notification' => 1990,
+        ]);
+        Notification::assertSentTo($user, PriceAlertNotification::class);
+    }
+
+    public function test_crawl_sends_price_change_notification_when_updated_price_matches_threshold(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+        $product = Product::factory()->uniqlo()->create([
+            'product_id' => 'E123456',
+            'price_group' => '000',
+            'current_price' => 2990,
+            'lowest_price' => 2990,
+            'highest_price' => 2990,
+        ]);
+        $watchlist = Watchlist::create([
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+        ]);
+        NotificationSetting::create([
+            'user_id' => $user->id,
+            'watchlist_id' => $watchlist->id,
+            'price_change_enabled' => true,
+            'price_change_min_amount' => 500,
+        ]);
+
+        Http::fake([
+            'www.uniqlo.com/*' => Http::response([
+                'result' => [
+                    'items' => [
+                        [
+                            'productId' => 'E123456',
+                            'priceGroup' => '000',
+                            'name' => 'Changed Product',
+                            'prices' => ['base' => ['value' => 1990]],
+                            'genderCategory' => 'MEN',
+                            'images' => ['main' => null],
+                        ],
+                    ],
+                    'pagination' => ['total' => 1],
+                ],
+            ], 200),
+        ]);
+
+        $this->crawler->crawl('uniqlo');
+
+        $this->assertDatabaseHas('price_notifications', [
+            'user_id' => $user->id,
+            'product_id' => $product->id,
+            'notification_type' => 'price_change',
+            'price_at_notification' => 1990,
+        ]);
+        Notification::assertSentTo($user, PriceAlertNotification::class);
     }
 
     public function test_crawl_creates_new_price_history_on_each_crawl(): void
